@@ -4,20 +4,10 @@ import type { Task, FixedEvent, StudySession, UserPreferences, UserProfile } fro
 import { generateSchedule } from './services/scheduler';
 import { Auth } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
-import { Timetable } from './components/Timetable';
-import { TaskManager } from './components/TaskManager';
-import { FixedEventManager } from './components/FixedEventManager';
-import { Preferences } from './components/Preferences';
 import {
-  LayoutDashboard,
-  Calendar as CalendarIcon,
-  ListTodo,
-  SlidersHorizontal,
   Bell,
   LogOut,
-  Menu,
   X,
-  Sparkles,
   CalendarDays
 } from 'lucide-react';
 

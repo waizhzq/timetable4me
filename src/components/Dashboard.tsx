@@ -8,13 +8,10 @@ import {
   CheckCircle2,
   Bookmark,
   Star,
-  ArrowRight,
   FileText,
-  AlertCircle,
   CheckSquare,
   Square,
-  PlusCircle,
-  Sparkles
+  PlusCircle
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -52,6 +49,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
+  onSavePreferences,
+  onResetData,
 }) => {
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
@@ -392,12 +391,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <ScheduleManager
           tasks={tasks}
           events={events}
+          preferences={preferences}
           conflictedTaskIds={conflictedTaskIds}
           onAddTask={onAddTask}
           onUpdateTask={onUpdateTask}
           onDeleteTask={onDeleteTask}
           onAddEvent={onAddEvent}
           onDeleteEvent={onDeleteEvent}
+          onSavePreferences={onSavePreferences}
+          onResetData={onResetData}
           onClose={() => setShowManager(false)}
         />
       )}

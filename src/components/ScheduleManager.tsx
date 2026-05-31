@@ -1,20 +1,11 @@
 import React, { useState } from 'react';
 import type { Task, FixedEvent, UserPreferences } from '../services/db';
 import {
-  Plus,
   Trash2,
   Calendar,
-  Clock,
-  BookOpen,
-  Dumbbell,
-  Users,
-  Briefcase,
-  LayoutGrid,
   ListTodo,
-  CheckCircle2,
   X,
-  PlusCircle,
-  FileText
+  LayoutGrid
 } from 'lucide-react';
 
 interface ScheduleManagerProps {
@@ -50,12 +41,12 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDeadline, setTaskDeadline] = useState('');
   const [taskHours, setTaskHours] = useState<number>(4);
-  const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [taskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [taskNotes, setTaskNotes] = useState('');
 
   // Event Form State
   const [eventTitle, setEventTitle] = useState('');
-  const [eventType, setEventType] = useState<'class' | 'training' | 'meeting' | 'work' | 'other'>('class');
+  const [eventType] = useState<'class' | 'training' | 'meeting' | 'work' | 'other'>('class');
   const [eventDay, setEventDay] = useState<'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday'>('Monday');
   const [eventStart, setEventStart] = useState('09:00');
   const [eventEnd, setEventEnd] = useState('11:00');
