@@ -211,15 +211,30 @@ const initializeMockData = () => {
 // PUBLIC API
 // ----------------------------------------------------
 
+/**
+ * Helper to remove undefined fields from objects before sending to Firestore
+ */
+const cleanData = (obj: any) => {
+  const newObj = { ...obj };
+  Object.keys(newObj).forEach((key) => {
+    if (newObj[key] === undefined) {
+      delete newObj[key];
+    } else if (typeof newObj[key] === 'object' && newObj[key] !== null && !Array.isArray(newObj[key])) {
+      newObj[key] = cleanData(newObj[key]);
+    }
+  });
+  return newObj;
+};
+
 export const dbService = {
   // Check if we are running in Firebase mode or Mock mode
   isFirebaseMode(): boolean {
-    return isFirebaseConfigured && fbAuth !== null;
+    return isFirebaseConfigured && fbAuth !== null && fbAuth.currentUser !== null;
   },
 
   // Auth Operations
   async signUp(email: string, password: string, name: string): Promise<UserProfile> {
-    if (this.isFirebaseMode()) {
+    if (isFirebaseConfigured && fbAuth !== null) {
       const cred = await createUserWithEmailAndPassword(fbAuth, email, password);
       await updateProfile(cred.user, { displayName: name });
       // Create user document in firestore
@@ -235,18 +250,16 @@ export const dbService = {
       initializeMockData();
       const mockUser: UserProfile = { uid: 'demo-user-123', email, displayName: name };
       localStorage.setItem(MOCK_USER_KEY, JSON.stringify(mockUser));
-      // Notify listeners
       return mockUser;
     }
   },
 
   async login(email: string, password: string): Promise<UserProfile> {
-    if (this.isFirebaseMode()) {
+    if (isFirebaseConfigured && fbAuth !== null) {
       const cred = await signInWithEmailAndPassword(fbAuth, email, password);
       return { uid: cred.user.uid, email: cred.user.email, displayName: cred.user.displayName };
     } else {
       initializeMockData();
-      // For mock, any login works
       const mockUser: UserProfile = {
         uid: 'demo-user-123',
         email: email,
@@ -258,7 +271,7 @@ export const dbService = {
   },
 
   async loginWithGoogle(): Promise<UserProfile> {
-    if (this.isFirebaseMode()) {
+    if (isFirebaseConfigured && fbAuth !== null) {
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(fbAuth, provider);
       // Create user document if doesn't exist
@@ -281,15 +294,14 @@ export const dbService = {
   },
 
   async logout(): Promise<void> {
-    if (this.isFirebaseMode()) {
+    if (isFirebaseConfigured && fbAuth !== null) {
       await signOut(fbAuth);
-    } else {
-      localStorage.removeItem(MOCK_USER_KEY);
     }
+    localStorage.removeItem(MOCK_USER_KEY);
   },
 
   async resetPassword(email: string): Promise<void> {
-    if (this.isFirebaseMode()) {
+    if (isFirebaseConfigured && fbAuth !== null) {
       await sendPasswordResetEmail(fbAuth, email);
     } else {
       console.log(`Mock reset password email sent to ${email}`);
@@ -297,35 +309,40 @@ export const dbService = {
   },
 
   onAuthStateChanged(callback: (user: UserProfile | null) => void): () => void {
-    if (this.isFirebaseMode()) {
-      return onFbAuthStateChanged(fbAuth, (user) => {
-        if (user) {
-          callback({ uid: user.uid, email: user.email, displayName: user.displayName });
-        } else {
-          callback(null);
-        }
-      });
-    } else {
-      // Simulate auth check
+    const fbUnsubscribe = (isFirebaseConfigured && fbAuth !== null)
+      ? onFbAuthStateChanged(fbAuth, (user) => {
+          if (user) {
+            callback({ uid: user.uid, email: user.email, displayName: user.displayName });
+          } else {
+            // Check if we have a mock user before calling null
+            const userStr = localStorage.getItem(MOCK_USER_KEY);
+            if (userStr) {
+              callback(JSON.parse(userStr));
+            } else {
+              callback(null);
+            }
+          }
+        })
+      : null;
+
+    // Simulate initial check for mock user if firebase is not configured or fails
+    if (!fbUnsubscribe) {
       const userStr = localStorage.getItem(MOCK_USER_KEY);
-      if (userStr) {
-        callback(JSON.parse(userStr));
-      } else {
-        callback(null);
-      }
-      // Return a no-op unsubscribe
-      return () => {};
+      callback(userStr ? JSON.parse(userStr) : null);
     }
+
+    return () => {
+      if (fbUnsubscribe) fbUnsubscribe();
+    };
   },
 
   getCurrentUser(): UserProfile | null {
-    if (this.isFirebaseMode()) {
-      const user = fbAuth?.currentUser;
-      return user ? { uid: user.uid, email: user.email, displayName: user.displayName } : null;
-    } else {
-      const userStr = localStorage.getItem(MOCK_USER_KEY);
-      return userStr ? JSON.parse(userStr) : null;
+    const fbUser = fbAuth?.currentUser;
+    if (fbUser) {
+      return { uid: fbUser.uid, email: fbUser.email, displayName: fbUser.displayName };
     }
+    const userStr = localStorage.getItem(MOCK_USER_KEY);
+    return userStr ? JSON.parse(userStr) : null;
   },
 
   // Preferences Operations
@@ -347,7 +364,7 @@ export const dbService = {
 
   async savePreferences(uid: string, preferences: UserPreferences): Promise<void> {
     if (this.isFirebaseMode()) {
-      await setDoc(doc(fbDb, 'users', uid, 'config', 'preferences'), preferences);
+      await setDoc(doc(fbDb, 'users', uid, 'config', 'preferences'), cleanData(preferences));
     } else {
       localStorage.setItem(MOCK_PREFS_KEY, JSON.stringify(preferences));
     }
@@ -368,7 +385,8 @@ export const dbService = {
 
   async addTask(uid: string, task: Omit<Task, 'id'>): Promise<Task> {
     if (this.isFirebaseMode()) {
-      const docRef = await addDoc(collection(fbDb, 'users', uid, 'tasks'), task);
+      const cleaned = cleanData(task);
+      const docRef = await addDoc(collection(fbDb, 'users', uid, 'tasks'), cleaned);
       return { id: docRef.id, ...task };
     } else {
       initializeMockData();
@@ -382,7 +400,7 @@ export const dbService = {
 
   async updateTask(uid: string, taskId: string, updates: Partial<Task>): Promise<void> {
     if (this.isFirebaseMode()) {
-      await updateDoc(doc(fbDb, 'users', uid, 'tasks', taskId), updates);
+      await updateDoc(doc(fbDb, 'users', uid, 'tasks', taskId), cleanData(updates));
     } else {
       initializeMockData();
       const tasks = await this.getTasks(uid);
@@ -420,7 +438,8 @@ export const dbService = {
 
   async addEvent(uid: string, event: Omit<FixedEvent, 'id'>): Promise<FixedEvent> {
     if (this.isFirebaseMode()) {
-      const docRef = await addDoc(collection(fbDb, 'users', uid, 'events'), event);
+      const cleaned = cleanData(event);
+      const docRef = await addDoc(collection(fbDb, 'users', uid, 'events'), cleaned);
       return { id: docRef.id, ...event };
     } else {
       initializeMockData();
@@ -434,7 +453,7 @@ export const dbService = {
 
   async updateEvent(uid: string, eventId: string, updates: Partial<FixedEvent>): Promise<void> {
     if (this.isFirebaseMode()) {
-      await updateDoc(doc(fbDb, 'users', uid, 'events', eventId), updates);
+      await updateDoc(doc(fbDb, 'users', uid, 'events', eventId), cleanData(updates));
     } else {
       initializeMockData();
       const events = await this.getEvents(uid);
@@ -472,16 +491,15 @@ export const dbService = {
 
   async saveSessions(uid: string, sessions: StudySession[]): Promise<void> {
     if (this.isFirebaseMode()) {
-      // For firestore, we delete old sessions and write new ones, or write them with fixed ids
-      // To prevent massive document accumulation, we clear old sessions first
+      // Clear old sessions and save new ones
       const q = query(collection(fbDb, 'users', uid, 'sessions'));
       const snap = await getDocs(q);
-      for (const d of snap.docs) {
-        await deleteDoc(doc(fbDb, 'users', uid, 'sessions', d.id));
-      }
-      for (const s of sessions) {
-        await setDoc(doc(fbDb, 'users', uid, 'sessions', s.id), s);
-      }
+      
+      // Use Promise.all for faster deletion
+      await Promise.all(snap.docs.map(d => deleteDoc(doc(fbDb, 'users', uid, 'sessions', d.id))));
+      
+      // Use Promise.all for faster writing
+      await Promise.all(sessions.map(s => setDoc(doc(fbDb, 'users', uid, 'sessions', s.id), cleanData(s))));
     } else {
       localStorage.setItem(MOCK_SESSIONS_KEY, JSON.stringify(sessions));
     }

@@ -199,62 +199,98 @@ function App() {
   // Tasks operations handlers
   const handleAddTask = async (task: Omit<Task, 'id'>) => {
     if (!user || !preferences) return;
-    const newTask = await dbService.addTask(user.uid, task);
-    const updatedTasks = [...tasks, newTask];
-    setTasks(updatedTasks);
-    await handleRecalculateSchedule(updatedTasks, events, preferences);
+    try {
+      const newTask = await dbService.addTask(user.uid, task);
+      const updatedTasks = [...tasks, newTask];
+      setTasks(updatedTasks);
+      await handleRecalculateSchedule(updatedTasks, events, preferences);
+    } catch (error) {
+      console.error('Failed to add task:', error);
+      const errNotif: InAppNotification = {
+        id: `error-${Date.now()}`,
+        title: 'Save Failed',
+        message: 'Could not save the new task. Please check your connection.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: false,
+      };
+      setNotifications((prev) => [errNotif, ...prev]);
+    }
   };
 
   const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
     if (!user || !preferences) return;
-    await dbService.updateTask(user.uid, taskId, updates);
-    const updatedTasks = tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t));
-    setTasks(updatedTasks);
-    
-    // If completing a task, regenerate to clean up scheduled hours
-    // Or if adjusting completed hours, regenerate to update target
-    await handleRecalculateSchedule(updatedTasks, events, preferences, true);
+    try {
+      await dbService.updateTask(user.uid, taskId, updates);
+      const updatedTasks = tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t));
+      setTasks(updatedTasks);
+      
+      // If completing a task, regenerate to clean up scheduled hours
+      // Or if adjusting completed hours, regenerate to update target
+      await handleRecalculateSchedule(updatedTasks, events, preferences, true);
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     if (!user || !preferences) return;
-    await dbService.deleteTask(user.uid, taskId);
-    const updatedTasks = tasks.filter((t) => t.id !== taskId);
-    setTasks(updatedTasks);
-    await handleRecalculateSchedule(updatedTasks, events, preferences);
+    try {
+      await dbService.deleteTask(user.uid, taskId);
+      const updatedTasks = tasks.filter((t) => t.id !== taskId);
+      setTasks(updatedTasks);
+      await handleRecalculateSchedule(updatedTasks, events, preferences);
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+    }
   };
 
   // Events operations handlers
   const handleAddEvent = async (event: Omit<FixedEvent, 'id'>) => {
     if (!user || !preferences) return;
-    const newEvent = await dbService.addEvent(user.uid, event);
-    const updatedEvents = [...events, newEvent];
-    setEvents(updatedEvents);
-    await handleRecalculateSchedule(tasks, updatedEvents, preferences);
+    try {
+      const newEvent = await dbService.addEvent(user.uid, event);
+      const updatedEvents = [...events, newEvent];
+      setEvents(updatedEvents);
+      await handleRecalculateSchedule(tasks, updatedEvents, preferences);
+    } catch (error) {
+      console.error('Failed to add event:', error);
+    }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!user || !preferences) return;
-    await dbService.deleteEvent(user.uid, eventId);
-    const updatedEvents = events.filter((e) => e.id !== eventId);
-    setEvents(updatedEvents);
-    await handleRecalculateSchedule(tasks, updatedEvents, preferences);
+    try {
+      await dbService.deleteEvent(user.uid, eventId);
+      const updatedEvents = events.filter((e) => e.id !== eventId);
+      setEvents(updatedEvents);
+      await handleRecalculateSchedule(tasks, updatedEvents, preferences);
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+    }
   };
 
   const handleUpdateEvent = async (eventId: string, updates: Partial<FixedEvent>) => {
     if (!user || !preferences) return;
-    await dbService.updateEvent(user.uid, eventId, updates);
-    const updatedEvents = events.map((e) => (e.id === eventId ? { ...e, ...updates } : e));
-    setEvents(updatedEvents);
-    await handleRecalculateSchedule(tasks, updatedEvents, preferences, true);
+    try {
+      await dbService.updateEvent(user.uid, eventId, updates);
+      const updatedEvents = events.map((e) => (e.id === eventId ? { ...e, ...updates } : e));
+      setEvents(updatedEvents);
+      await handleRecalculateSchedule(tasks, updatedEvents, preferences, true);
+    } catch (error) {
+      console.error('Failed to update event:', error);
+    }
   };
 
   // Preferences handler
   const handleSavePreferences = async (newPrefs: UserPreferences) => {
     if (!user) return;
-    await dbService.savePreferences(user.uid, newPrefs);
-    setPreferences(newPrefs);
-    await handleRecalculateSchedule(tasks, events, newPrefs);
+    try {
+      await dbService.savePreferences(user.uid, newPrefs);
+      setPreferences(newPrefs);
+      await handleRecalculateSchedule(tasks, events, newPrefs);
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+    }
   };
 
   // Toggle study session completion
@@ -265,17 +301,21 @@ function App() {
     taskId: string
   ) => {
     if (!user || !preferences) return;
-    await dbService.toggleSessionComplete(user.uid, sessionId, completed, hours, taskId);
-    
-    // Reload state after DB updates
-    const fetchedTasks = await dbService.getTasks(user.uid);
-    const fetchedSessions = await dbService.getSessions(user.uid);
-    setTasks(fetchedTasks);
-    setSessions(fetchedSessions);
+    try {
+      await dbService.toggleSessionComplete(user.uid, sessionId, completed, hours, taskId);
+      
+      // Reload state after DB updates
+      const fetchedTasks = await dbService.getTasks(user.uid);
+      const fetchedSessions = await dbService.getSessions(user.uid);
+      setTasks(fetchedTasks);
+      setSessions(fetchedSessions);
 
-    // Run minor recalculation check
-    const result = generateSchedule(fetchedTasks, events, preferences);
-    setConflictedTaskIds(result.conflictedTaskIds);
+      // Run minor recalculation check
+      const result = generateSchedule(fetchedTasks, events, preferences);
+      setConflictedTaskIds(result.conflictedTaskIds);
+    } catch (error) {
+      console.error('Failed to toggle session:', error);
+    }
   };
 
   // Clear data
