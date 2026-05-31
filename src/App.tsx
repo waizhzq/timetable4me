@@ -32,8 +32,6 @@ interface InAppNotification {
 function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<string>('dashboard');
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Core Data States
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -182,7 +180,6 @@ function App() {
   // Auth Complete
   const handleAuthSuccess = (profile: UserProfile) => {
     setUser(profile);
-    setView('dashboard');
   };
 
   // Logout
@@ -349,106 +346,13 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* Mobile Sidebar Backdrop Overlay */}
-      {mobileSidebarOpen && (
-        <div
-          className="sidebar-backdrop"
-          onClick={() => setMobileSidebarOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 45,
-            transition: 'opacity var(--transition-normal)',
-          }}
-        />
-      )}
-
-      {/* Sidebar Navigation */}
-      <aside className={`sidebar ${mobileSidebarOpen ? 'active' : ''}`} style={{ transform: mobileSidebarOpen ? 'translateX(0)' : undefined }}>
-        <div className="sidebar-logo" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <CalendarDays className="logo-icon" size={24} />
-            <span className="logo-text">Timetable4me</span>
-          </div>
-          <button
-            onClick={() => setMobileSidebarOpen(false)}
-            className="sidebar-close-btn"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              display: 'none',
-              padding: '4px',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <ul className="sidebar-menu">
-          <li className={`menu-item ${view === 'dashboard' ? 'active' : ''}`} onClick={() => { setView('dashboard'); setMobileSidebarOpen(false); }}>
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </li>
-          <li className={`menu-item ${view === 'timetable' ? 'active' : ''}`} onClick={() => { setView('timetable'); setMobileSidebarOpen(false); }}>
-            <CalendarIcon size={18} />
-            <span>Weekly Calendar</span>
-          </li>
-          <li className={`menu-item ${view === 'tasks' ? 'active' : ''}`} onClick={() => { setView('tasks'); setMobileSidebarOpen(false); }}>
-            <ListTodo size={18} />
-            <span>Manage Tasks</span>
-          </li>
-          <li className={`menu-item ${view === 'events' ? 'active' : ''}`} onClick={() => { setView('events'); setMobileSidebarOpen(false); }}>
-            <CalendarIcon size={18} />
-            <span>Fixed Schedule</span>
-          </li>
-          <li className={`menu-item ${view === 'preferences' ? 'active' : ''}`} onClick={() => { setView('preferences'); setMobileSidebarOpen(false); }}>
-            <SlidersHorizontal size={18} />
-            <span>Preferences</span>
-          </li>
-        </ul>
-
-        <div className="sidebar-footer">
-          <div className="user-badge">
-            <div className="avatar">
-              {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
-            </div>
-            <div className="user-info">
-              <div className="user-name">{user.displayName || 'Scholar User'}</div>
-              <div className="user-role">{user.email}</div>
-            </div>
-          </div>
-
-          <button onClick={handleLogout} className="btn btn-secondary" style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', width: '100%' }}>
-            <LogOut size={16} />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </aside>
-
       {/* Main Panel Content */}
-      <main className="main-content">
+      <main className="main-content" style={{ marginLeft: 0 }}>
         {/* Header Bar */}
         <header className="header-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button
-              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-              className="btn btn-secondary"
-              style={{ display: 'none', padding: '8px' }} // Controlled by media queries
-              id="mobile-menu-toggle"
-            >
-              {mobileSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-            <div className="header-title-container">
-              <h1 style={{ fontSize: '1.75rem', margin: 0, fontWeight: 700, textTransform: 'capitalize' }}>
-                {view.replace('_', ' ')}
-              </h1>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <CalendarDays className="logo-icon" size={28} />
+            <span className="logo-text" style={{ fontSize: '1.5rem' }}>Timetable4me</span>
           </div>
 
           <div className="header-actions">
@@ -507,85 +411,38 @@ function App() {
               )}
             </div>
 
-            <div style={{ fontSize: '0.8rem', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Sparkles size={12} className="logo-icon" />
-              <span>{dbService.isFirebaseMode() ? 'Firebase Direct' : 'Sandbox Cache'}</span>
+            <div className="user-badge" style={{ padding: '4px 8px', gap: '0.5rem' }}>
+              <div className="avatar" style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}>
+                {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+              </div>
+              <div className="user-info" style={{ display: 'none' }}> {/* Hidden on small screens, can be shown via media queries */}
+                <div className="user-name" style={{ fontSize: '0.75rem' }}>{user.displayName || 'User'}</div>
+              </div>
+              <button onClick={handleLogout} className="btn" style={{ padding: '4px', color: 'var(--text-secondary)' }}>
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
         </header>
 
-        {/* Dynamic Panel Views */}
-        {view === 'dashboard' && (
-          <Dashboard
-            tasks={tasks}
-            events={events}
-            sessions={sessions}
-            preferences={preferences}
-            onToggleSession={handleToggleSessionComplete}
-            onUpdateTask={handleUpdateTask}
-            onUpdateEvent={handleUpdateEvent}
-            setView={setView}
-          />
-        )}
-
-        {view === 'timetable' && (
-          <Timetable
-            events={events}
-            sessions={sessions}
-            preferences={preferences}
-            onAddEvent={handleAddEvent}
-            onToggleSession={handleToggleSessionComplete}
-            onRegenerate={() => handleRecalculateSchedule(tasks, events, preferences)}
-          />
-        )}
-
-        {view === 'tasks' && (
-          <TaskManager
-            tasks={tasks}
-            conflictedTaskIds={conflictedTaskIds}
-            onAddTask={handleAddTask}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-          />
-        )}
-
-        {view === 'events' && (
-          <FixedEventManager
-            events={events}
-            onAddEvent={handleAddEvent}
-            onDeleteEvent={handleDeleteEvent}
-          />
-        )}
-
-        {view === 'preferences' && (
-          <Preferences
-            preferences={preferences}
-            onSavePreferences={handleSavePreferences}
-            onResetData={handleResetData}
-          />
-        )}
+        {/* Master Dashboard View */}
+        <Dashboard
+          tasks={tasks}
+          events={events}
+          sessions={sessions}
+          preferences={preferences}
+          conflictedTaskIds={conflictedTaskIds}
+          onToggleSession={handleToggleSessionComplete}
+          onUpdateTask={handleUpdateTask}
+          onDeleteTask={handleDeleteTask}
+          onAddTask={handleAddTask}
+          onAddEvent={handleAddEvent}
+          onUpdateEvent={handleUpdateEvent}
+          onDeleteEvent={handleDeleteEvent}
+          onSavePreferences={handleSavePreferences}
+          onResetData={handleResetData}
+        />
       </main>
-
-      {/* Embedded Mobile CSS Toggle Fix */}
-      <style>{`
-        @media (max-width: 1024px) {
-          #mobile-menu-toggle {
-            display: inline-flex !important;
-          }
-          .sidebar {
-            left: 0;
-            transform: translateX(-100%);
-            width: 280px !important;
-            box-shadow: 20px 0 30px rgba(0,0,0,0.5);
-          }
-          .sidebar.active {
-            transform: translateX(0) !important;
-          }
-          .sidebar-close-btn {
-            display: inline-flex !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

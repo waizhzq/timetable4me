@@ -265,8 +265,9 @@ a:hover {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
   background-color: var(--bg-app);
+  transition: padding 0.3s ease;
 }
 
 /* Header bar styling */
@@ -274,8 +275,21 @@ a:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--border-color);
+}
+
+@media (max-width: 600px) {
+  .main-content {
+    padding: 1rem 0.75rem;
+    gap: 1rem;
+  }
+  .header-bar {
+    padding-bottom: 1rem;
+  }
+  .card {
+    padding: 1rem;
+  }
 }
 
 .header-title-container h1 {
