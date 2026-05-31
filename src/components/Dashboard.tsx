@@ -66,6 +66,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // State for Management Modal
   const [showManager, setShowManager] = useState(false);
+  const [editingItem, setEditingItem] = useState<{ type: 'task' | 'event', id: string } | null>(null);
 
   // Active Selected Block state for Inspector
   const [selectedBlock, setSelectedBlock] = useState<{
@@ -245,6 +246,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setIsEditingNotes(false);
   };
 
+  const handleDeleteSelectedItem = async () => {
+    if (!selectedBlock) return;
+    if (!window.confirm(`Delete this ${selectedBlock.type === 'study' ? 'task' : 'class'}?`)) return;
+
+    if (selectedBlock.type === 'study') {
+      await onDeleteTask(selectedBlock.dbId);
+    } else {
+      await onDeleteEvent(selectedBlock.dbId);
+    }
+    setSelectedBlock(null);
+  };
+
+  const handleEditSelectedItem = () => {
+    if (!selectedBlock) return;
+    setEditingItem({
+      type: selectedBlock.type === 'study' ? 'task' : 'event',
+      id: selectedBlock.dbId
+    });
+    setShowManager(true);
+  };
+
   // ----------------------------------------------------
   // Dashboard Calculations
   // ----------------------------------------------------
@@ -399,6 +421,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               {isEditingNotes ? <textarea className="form-control" style={{ width: '100%', minHeight: '80px', fontSize: '0.9rem' }} value={noteText} onChange={(e) => setNoteText(e.target.value)} /> : <div style={{ backgroundColor: 'rgba(0,0,0,0.15)', padding: '1rem', borderRadius: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{inspectorDetails.notes}</div>}
             </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button onClick={handleEditSelectedItem} className="btn btn-primary" style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}>Edit Details</button>
+              <button onClick={handleDeleteSelectedItem} className="btn btn-danger" style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}>Delete Item</button>
+            </div>
+
             {selectedBlock.type === 'study' && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: '#fff', marginBottom: '0.75rem' }}><CheckSquare size={16} /><span>Checklist</span></div>
@@ -501,14 +529,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
           events={events}
           preferences={preferences}
           conflictedTaskIds={conflictedTaskIds}
+          initialItem={editingItem}
           onAddTask={onAddTask}
           onUpdateTask={onUpdateTask}
           onDeleteTask={onDeleteTask}
           onAddEvent={onAddEvent}
+          onUpdateEvent={onUpdateEvent}
           onDeleteEvent={onDeleteEvent}
           onSavePreferences={onSavePreferences}
           onResetData={onResetData}
-          onClose={() => setShowManager(false)}
+          onClose={() => { setShowManager(false); setEditingItem(null); }}
         />
       )}
     </div>

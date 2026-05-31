@@ -15,10 +15,12 @@ interface ScheduleManagerProps {
   events: FixedEvent[];
   preferences: UserPreferences;
   conflictedTaskIds: string[];
+  initialItem?: { type: 'task' | 'event', id: string } | null;
   onAddTask: (task: Omit<Task, 'id'>) => Promise<void>;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
   onAddEvent: (event: Omit<FixedEvent, 'id'>) => Promise<void>;
+  onUpdateEvent: (eventId: string, updates: Partial<FixedEvent>) => Promise<void>;
   onDeleteEvent: (eventId: string) => Promise<void>;
   onSavePreferences: (prefs: UserPreferences) => Promise<void>;
   onResetData: () => void;
@@ -29,15 +31,19 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
   tasks,
   events,
   preferences,
+  initialItem,
   onAddTask,
+  onUpdateTask,
   onDeleteTask,
   onAddEvent,
+  onUpdateEvent,
   onDeleteEvent,
   onSavePreferences,
   onResetData,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'tasks' | 'events' | 'settings'>('tasks');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Task Form State
   const [taskTitle, setTaskTitle] = useState('');
@@ -72,6 +78,64 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     '#FFC7C7', '#FFE2E2', '#F6F6F6', '#8785A2'
   ];
 
+  // Effect to load initial item for editing
+  React.useEffect(() => {
+    if (initialItem) {
+      if (initialItem.type === 'task') {
+        const task = tasks.find(t => t.id === initialItem.id);
+        if (task) {
+          setActiveTab('tasks');
+          setEditingId(task.id);
+          setTaskTitle(task.title);
+          setTaskCategory(task.category);
+          setCustomCategory(task.customCategory || '');
+          setTaskColor(task.color);
+          setHasDeadline(task.hasDeadline);
+          setTaskDeadline(task.deadline || '');
+          setTimeOption(task.startTime ? 'specific' : 'hours');
+          setTaskHours(task.estimatedHours);
+          setTaskStart(task.startTime || '09:00');
+          setTaskEnd(task.endTime || '11:00');
+          setTaskPriority(task.priority);
+          setTaskNotes(task.notes || '');
+        }
+      } else if (initialItem.type === 'event') {
+        const event = events.find(e => e.id === initialItem.id);
+        if (event) {
+          setActiveTab('events');
+          setEditingId(event.id);
+          setEventTitle(event.title);
+          setEventType(event.type);
+          setEventColor(event.color);
+          setEventDay(event.day || 'Monday');
+          setEventStart(event.startTime);
+          setEventEnd(event.endTime);
+        }
+      }
+    }
+  }, [initialItem, tasks, events]);
+
+  const resetTaskForm = () => {
+    setEditingId(null);
+    setTaskTitle('');
+    setTaskNotes('');
+    setCustomCategory('');
+    setTaskColor('#FF0052');
+    setHasDeadline(true);
+    setTaskDeadline('');
+    setTaskHours(2);
+    setTaskPriority('medium');
+  };
+
+  const resetEventForm = () => {
+    setEditingId(null);
+    setEventTitle('');
+    setEventColor('#0055DA');
+    setEventDay('Monday');
+    setEventStart('09:00');
+    setEventEnd('11:00');
+  };
+
   const handleAddTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
@@ -83,7 +147,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
       estHours = (eh + em / 60) - (sh + sm / 60);
     }
 
-    await onAddTask({
+    const taskData = {
       title: taskTitle,
       category: taskCategory,
       customCategory: taskCategory === 'other' ? customCategory : undefined,
@@ -95,21 +159,26 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
       estimatedHours: estHours,
       completedHours: 0,
       priority: taskPriority,
-      status: 'pending',
+      status: 'pending' as const,
       notes: taskNotes.trim() || undefined,
       subtasks: [],
-    });
+    };
 
-    setTaskTitle('');
-    setTaskNotes('');
-    setCustomCategory('');
+    if (editingId) {
+      await onUpdateTask(editingId, taskData);
+      alert('Task updated!');
+    } else {
+      await onAddTask(taskData);
+    }
+
+    resetTaskForm();
   };
 
   const handleAddEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventTitle.trim()) return;
 
-    await onAddEvent({
+    const eventData = {
       title: eventTitle,
       type: eventType,
       color: eventColor,
@@ -117,9 +186,16 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
       startTime: eventStart,
       endTime: eventEnd,
       recurring: true,
-    });
+    };
 
-    setEventTitle('');
+    if (editingId) {
+      await onUpdateEvent(editingId, eventData);
+      alert('Class updated!');
+    } else {
+      await onAddEvent(eventData);
+    }
+
+    resetEventForm();
   };
 
   const handlePrefsSubmit = async (e: React.FormEvent) => {
@@ -149,25 +225,52 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     }
   };
 
+  const startEditingTask = (t: Task) => {
+    setEditingId(t.id);
+    setTaskTitle(t.title);
+    setTaskCategory(t.category);
+    setCustomCategory(t.customCategory || '');
+    setTaskColor(t.color);
+    setHasDeadline(t.hasDeadline);
+    setTaskDeadline(t.deadline || '');
+    setTimeOption(t.startTime ? 'specific' : 'hours');
+    setTaskHours(t.estimatedHours);
+    setTaskStart(t.startTime || '09:00');
+    setTaskEnd(t.endTime || '11:00');
+    setTaskPriority(t.priority);
+    setTaskNotes(t.notes || '');
+    document.querySelector('.modal-content')?.parentElement?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const startEditingEvent = (e: FixedEvent) => {
+    setEditingId(e.id);
+    setEventTitle(e.title);
+    setEventType(e.type);
+    setEventColor(e.color);
+    setEventDay(e.day || 'Monday');
+    setEventStart(e.startTime);
+    setEventEnd(e.endTime);
+    document.querySelector('.modal-content')?.parentElement?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)' }}>
         <div className="modal-header">
-          <h2 className="modal-title">Schedule Manager</h2>
+          <h2 className="modal-title">{editingId ? 'Edit Item' : 'Schedule Manager'}</h2>
           <button onClick={onClose} className="btn btn-secondary" style={{ padding: '6px' }}>
             <X size={20} />
           </button>
         </div>
 
-        {/* Tab Switcher */}
         <div style={{ display: 'flex', gap: '4px', marginBottom: '1.25rem', backgroundColor: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-          <button onClick={() => setActiveTab('tasks')} className="btn" style={{ flex: 1, backgroundColor: activeTab === 'tasks' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.85rem', padding: '10px' }}>
+          <button onClick={() => { setActiveTab('tasks'); setEditingId(null); }} className="btn" style={{ flex: 1, backgroundColor: activeTab === 'tasks' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.85rem', padding: '10px' }}>
             <ListTodo size={16} /><span>Tasks</span>
           </button>
-          <button onClick={() => setActiveTab('events')} className="btn" style={{ flex: 1, backgroundColor: activeTab === 'events' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.85rem', padding: '10px' }}>
+          <button onClick={() => { setActiveTab('events'); setEditingId(null); }} className="btn" style={{ flex: 1, backgroundColor: activeTab === 'events' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.85rem', padding: '10px' }}>
             <Calendar size={16} /><span>Classes</span>
           </button>
-          <button onClick={() => setActiveTab('settings')} className="btn" style={{ flex: 1, backgroundColor: activeTab === 'settings' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.85rem', padding: '10px' }}>
+          <button onClick={() => { setActiveTab('settings'); setEditingId(null); }} className="btn" style={{ flex: 1, backgroundColor: activeTab === 'settings' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.85rem', padding: '10px' }}>
             <LayoutGrid size={16} /><span>Settings</span>
           </button>
         </div>
@@ -175,7 +278,12 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
         <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '6px' }}>
           {activeTab === 'tasks' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <form onSubmit={handleAddTaskSubmit} className="card" style={{ backgroundColor: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderStyle: 'dashed' }}>
+              <form onSubmit={handleAddTaskSubmit} className="card" style={{ backgroundColor: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderStyle: editingId ? 'solid' : 'dashed', borderColor: editingId ? 'var(--primary)' : 'var(--border-color)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1rem', color: '#fff' }}>{editingId ? 'Updating Task...' : 'Add New Task'}</h3>
+                  {editingId && <button type="button" onClick={resetTaskForm} className="btn btn-secondary" style={{ fontSize: '0.7rem', padding: '4px 8px' }}>Cancel Edit</button>}
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">Task Name</label>
                   <input type="text" className="form-control" placeholder="e.g. Physics Lab" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} required />
@@ -249,7 +357,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                   )}
                 </div>
 
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.8rem', fontWeight: 600 }}>Add Task</button>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.8rem', fontWeight: 600 }}>{editingId ? 'Update Task' : 'Add Task'}</button>
               </form>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -267,7 +375,10 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                         {t.startTime && ` • ${t.startTime}-${t.endTime}`}
                       </div>
                     </div>
-                    <button onClick={() => onDeleteTask(t.id)} className="btn btn-danger" style={{ padding: '6px' }}><Trash2 size={14} /></button>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button onClick={() => startEditingTask(t)} className="btn btn-secondary" style={{ padding: '6px' }}><LayoutGrid size={14} /></button>
+                      <button onClick={() => { if(window.confirm('Delete this task?')) onDeleteTask(t.id); }} className="btn btn-danger" style={{ padding: '6px' }}><Trash2 size={14} /></button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -276,7 +387,12 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
 
           {activeTab === 'events' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <form onSubmit={handleAddEventSubmit} className="card" style={{ backgroundColor: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderStyle: 'dashed' }}>
+              <form onSubmit={handleAddEventSubmit} className="card" style={{ backgroundColor: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderStyle: editingId ? 'solid' : 'dashed', borderColor: editingId ? 'var(--primary)' : 'var(--border-color)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1rem', color: '#fff' }}>{editingId ? 'Updating Class...' : 'Block New Time'}</h3>
+                  {editingId && <button type="button" onClick={resetEventForm} className="btn btn-secondary" style={{ fontSize: '0.7rem', padding: '4px 8px' }}>Cancel Edit</button>}
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">Event Name</label>
                   <input type="text" className="form-control" placeholder="e.g. Bio 101" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} required />
@@ -313,7 +429,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                   <div className="form-group"><label className="form-label">Start</label><input type="time" className="form-control" value={eventStart} onChange={(e) => setEventStart(e.target.value)} required /></div>
                   <div className="form-group"><label className="form-label">End</label><input type="time" className="form-control" value={eventEnd} onChange={(e) => setEventEnd(e.target.value)} required /></div>
                 </div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.8rem' }}>Block Weekly Slots</button>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.8rem' }}>{editingId ? 'Update Class' : 'Block Weekly Slots'}</button>
               </form>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -324,7 +440,10 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                       <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.85rem' }}>{e.title}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{e.day} • {e.startTime}-{e.endTime}</div>
                     </div>
-                    <button onClick={() => onDeleteEvent(e.id)} className="btn btn-danger" style={{ padding: '6px' }}><Trash2 size={14} /></button>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button onClick={() => startEditingEvent(e)} className="btn btn-secondary" style={{ padding: '6px' }}><LayoutGrid size={14} /></button>
+                      <button onClick={() => { if(window.confirm('Delete this class?')) onDeleteEvent(e.id); }} className="btn btn-danger" style={{ padding: '6px' }}><Trash2 size={14} /></button>
+                    </div>
                   </div>
                 ))}
               </div>
