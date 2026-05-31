@@ -27,23 +27,25 @@ export const calculatePriorityScore = (task: Task, now: Date = new Date()): numb
   }
 
   // 1. Urgency Score
-  const deadlineDate = new Date(task.deadline + 'T23:59:59');
-  const diffTime = deadlineDate.getTime() - now.getTime();
-  const diffHours = diffTime / (1000 * 60 * 60);
+  let urgencyScore = 5; 
+  if (task.hasDeadline && task.deadline) {
+    const deadlineDate = new Date(task.deadline + 'T23:59:59');
+    const diffTime = deadlineDate.getTime() - now.getTime();
+    const diffHours = diffTime / (1000 * 60 * 60);
 
-  let urgencyScore = 5; // Low (> 7 days)
-  if (diffHours < 0) {
-    urgencyScore = 100; // Overdue, extreme urgency
-  } else if (diffHours <= 24) {
-    urgencyScore = 50; // Critical (<= 24 hours)
-  } else if (diffHours <= 72) {
-    urgencyScore = 30; // High (<= 3 days)
-  } else if (diffHours <= 168) {
-    urgencyScore = 15; // Medium (<= 7 days)
+    if (diffHours < 0) {
+      urgencyScore = 100;
+    } else if (diffHours <= 24) {
+      urgencyScore = 50;
+    } else if (diffHours <= 72) {
+      urgencyScore = 30;
+    } else if (diffHours <= 168) {
+      urgencyScore = 15;
+    }
   }
 
   // 2. Importance Score (based on priority)
-  let importanceScore = 10; // Low
+  let importanceScore = 10;
   if (task.priority === 'high') {
     importanceScore = 40;
   } else if (task.priority === 'medium') {
@@ -164,12 +166,15 @@ export const generateSchedule = (
       // Check if slot overlaps any manually scheduled task
       if (!isBlocked) {
         for (const task of tasks) {
-          if (task.status !== 'completed' && task.scheduledDate === dateStr && task.scheduledStart && task.scheduledEnd) {
-            const startDec = parseTimeToDecimal(task.scheduledStart);
-            const endDec = parseTimeToDecimal(task.scheduledEnd);
-            if (hour < endDec && startDec < hour + 1) {
-              isBlocked = true;
-              break;
+          if (task.status !== 'completed' && task.startTime && task.endTime) {
+            // Block today's slots for specific-time tasks
+            if (dateStr === startDate.toISOString().split('T')[0]) {
+              const startDec = parseTimeToDecimal(task.startTime);
+              const endDec = parseTimeToDecimal(task.endTime);
+              if (hour < endDec && startDec < hour + 1) {
+                isBlocked = true;
+                break;
+              }
             }
           }
         }
@@ -202,33 +207,17 @@ export const generateSchedule = (
   };
 
   // 3. First Pass: Even distribution
-  // We try to schedule a target number of hours per day for each task up to a cap (e.g. 2 hours)
   activeTasks.forEach((task) => {
-    const daysAvailable = getDaysAvailableBefore(task.deadline);
-    if (daysAvailable <= 0) {
-      // Overdue task, can't schedule in future slots
-      return;
-    }
+    const deadlineStr = task.hasDeadline && task.deadline ? task.deadline : getFutureDateStr(startDate, 14);
+    const daysAvailable = getDaysAvailableBefore(deadlineStr);
+    
+    if (daysAvailable <= 0) return;
 
-    // Target hours per day (even distribution)
-    const targetHoursPerDay = Math.min(
-      2, // Cap at 2 hours per task per day in the first pass
-      Math.ceil(task.remainingHours / daysAvailable)
-    );
+    const targetHoursPerDay = Math.min(2, Math.ceil(task.remainingHours / daysAvailable));
 
-    // Try to schedule across the available days
     for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
       const day = calendarGrid[dayOffset];
-      if (!day) break;
-
-      // Cannot schedule after deadline date
-      if (day.dateStr > task.deadline) {
-        break;
-      }
-
-      if (task.remainingHours <= 0) {
-        break;
-      }
+      if (!day || day.dateStr > deadlineStr || task.remainingHours <= 0) break;
 
       // Enforce global daily cap
       const currentDayTotal = dailyStudyHours[day.dateStr] || 0;
@@ -259,24 +248,13 @@ export const generateSchedule = (
   });
 
   // 4. Second Pass: Sweep overflow
-  // For tasks that still have remaining hours, fill in any available slots up to maxStudyHoursPerDay
   activeTasks.forEach((task) => {
-    if (task.remainingHours <= 0) {
-      return;
-    }
+    if (task.remainingHours <= 0) return;
+    const deadlineStr = task.hasDeadline && task.deadline ? task.deadline : getFutureDateStr(startDate, 14);
 
     for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
       const day = calendarGrid[dayOffset];
-      if (!day) break;
-
-      // Cannot schedule after deadline date
-      if (day.dateStr > task.deadline) {
-        break;
-      }
-
-      if (task.remainingHours <= 0) {
-        break;
-      }
+      if (!day || day.dateStr > deadlineStr || task.remainingHours <= 0) break;
 
       // Enforce global daily cap
       const currentDayTotal = dailyStudyHours[day.dateStr] || 0;
@@ -373,12 +351,14 @@ export const generateSchedule = (
 
   // 6. Append manually scheduled task sessions
   tasks.forEach((task) => {
-    if (task.scheduledDate && task.scheduledStart && task.scheduledEnd) {
-      const startISO = new Date(task.scheduledDate + 'T' + task.scheduledStart + ':00');
-      const endISO = new Date(task.scheduledDate + 'T' + task.scheduledEnd + ':00');
+    if (task.startTime && task.endTime) {
+      // Treat specific time tasks as occurring TODAY
+      const today = startDate.toISOString().split('T')[0];
+      const startISO = new Date(today + 'T' + task.startTime + ':00');
+      const endISO = new Date(today + 'T' + task.endTime + ':00');
 
       sessions.push({
-        id: `session-manual-${task.id}`,
+        id: `session-fixed-task-${task.id}`,
         taskId: task.id,
         taskTitle: task.title,
         start: startISO.toISOString(),
@@ -393,4 +373,10 @@ export const generateSchedule = (
     conflictedTaskIds,
     priorityScores,
   };
+};
+
+const getFutureDateStr = (date: Date, days: number): string => {
+  const d = new Date(date.getTime());
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
 };

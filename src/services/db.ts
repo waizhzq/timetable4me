@@ -24,23 +24,28 @@ import {
 export interface Task {
   id: string;
   title: string;
-  deadline: string; // YYYY-MM-DD
+  category: 'assignment' | 'quiz' | 'program' | 'date' | 'training' | 'other';
+  customCategory?: string;
+  color: string;
+  hasDeadline: boolean;
+  deadline?: string; // YYYY-MM-DD
+  startTime?: string; // HH:MM
+  endTime?: string; // HH:MM
   estimatedHours: number;
   completedHours: number;
   priority: 'low' | 'medium' | 'high';
   status: 'pending' | 'in_progress' | 'completed';
   notes?: string;
   subtasks?: { id: string; text: string; completed: boolean }[];
-  scheduledDate?: string; // YYYY-MM-DD
-  scheduledStart?: string; // HH:MM
-  scheduledEnd?: string; // HH:MM
 }
 
 export interface FixedEvent {
   id: string;
   title: string;
   type: 'class' | 'training' | 'meeting' | 'work' | 'other';
-  day?: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+  customType?: string;
+  color: string;
+  day?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
   date?: string; // YYYY-MM-DD
   startTime: string; // HH:MM
   endTime: string; // HH:MM
@@ -96,46 +101,31 @@ const getDefaultTasks = (): Task[] => [
   {
     id: 'task-1',
     title: 'Database Assignment',
+    category: 'assignment',
+    color: '#FF0052',
+    hasDeadline: true,
     deadline: getRelativeDateStr(8),
     estimatedHours: 8,
     completedHours: 2,
     priority: 'high',
     status: 'in_progress',
-    notes: 'Draft relational schemas, write raw SQL queries for reporting, and compile the design document in PDF format.',
+    notes: 'Draft relational schemas.',
     subtasks: [
-      { id: 'sub-1-1', text: 'Draw Entity-Relationship Diagram', completed: true },
-      { id: 'sub-1-2', text: 'Write DDL creation scripts', completed: false },
-      { id: 'sub-1-3', text: 'Optimize SELECT queries using indexes', completed: false },
-      { id: 'sub-1-4', text: 'Format design doc report', completed: false }
+      { id: 'sub-1-1', text: 'Draw ER Diagram', completed: true },
+      { id: 'sub-1-2', text: 'Write DDL scripts', completed: false }
     ]
   },
   {
     id: 'task-2',
-    title: 'Physics Quiz Prep',
+    title: 'Physics Quiz',
+    category: 'quiz',
+    color: '#FFD400',
+    hasDeadline: true,
     deadline: getRelativeDateStr(2),
     estimatedHours: 3,
     completedHours: 0,
     priority: 'high',
     status: 'pending',
-    notes: 'Review electromagnetism and basic circuits formulas. Solve chapter 4 review problems.',
-    subtasks: [
-      { id: 'sub-2-1', text: 'Review lecture notes slides', completed: false },
-      { id: 'sub-2-2', text: 'Solve sample physics quiz problems', completed: false }
-    ]
-  },
-  {
-    id: 'task-3',
-    title: 'Gym Workout Plan',
-    deadline: getRelativeDateStr(5),
-    estimatedHours: 2,
-    completedHours: 0,
-    priority: 'low',
-    status: 'pending',
-    notes: 'Prepare a 4-day split workout routing focus on hypertrophy.',
-    subtasks: [
-      { id: 'sub-3-1', text: 'Select compound exercises', completed: false },
-      { id: 'sub-3-2', text: 'Choose cardio warmups', completed: false }
-    ]
   },
 ];
 
@@ -144,51 +134,11 @@ const defaultEvents: FixedEvent[] = [
     id: 'event-1',
     title: 'Programming Class',
     type: 'class',
+    color: '#0055DA',
     day: 'Monday',
     startTime: '09:00',
     endTime: '11:00',
     recurring: true,
-    notes: 'Intro to React Hooks, Virtual DOM mechanics, and state lifecycle methods. Located in Room 402.'
-  },
-  {
-    id: 'event-2',
-    title: 'Database Lecture',
-    type: 'class',
-    day: 'Wednesday',
-    startTime: '13:00',
-    endTime: '15:00',
-    recurring: true,
-    notes: 'Database normalization theories (1NF, 2NF, 3NF, BCNF) and dependency mapping. Located in Hall A.'
-  },
-  {
-    id: 'event-3',
-    title: 'Athletic Training Session',
-    type: 'training',
-    day: 'Tuesday',
-    startTime: '16:00',
-    endTime: '19:00',
-    recurring: true,
-    notes: 'Field drills, speed intervals, sprint pacing, and leg recovery routines.'
-  },
-  {
-    id: 'event-4',
-    title: 'Athletic Training Session',
-    type: 'training',
-    day: 'Thursday',
-    startTime: '16:00',
-    endTime: '19:00',
-    recurring: true,
-    notes: 'Strength training in gym. Deadlifts, squats, bench press, and core stability drills.'
-  },
-  {
-    id: 'event-5',
-    title: 'Weekly Team Scrum',
-    type: 'meeting',
-    day: 'Friday',
-    startTime: '10:00',
-    endTime: '11:30',
-    recurring: true,
-    notes: 'Sprints review, roadblock discussions, and workload sync with teammates.'
   },
 ];
 
