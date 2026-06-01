@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 
 const WORK_SECS  = 25 * 60;
-const BREAK_SECS = 5 * 60;
 const DAY_START  = 7;
 const DAY_END    = 23;
 
