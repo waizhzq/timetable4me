@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { animate } from 'animejs';
+import { animate, createTimer } from 'animejs';
 import type { Task, FixedEvent, StudySession, Todo } from '../services/db';
 import { calculatePriorityScore } from '../services/scheduler';
 import {
   Clock, CheckCircle2, Bookmark, Star, FileText,
   CheckSquare, Square, AlertCircle, ArrowRight,
-  ListTodo, Trash2, BarChart2, Timer, Play, Pause,
-  RotateCcw, Plus, CalendarDays, X,
+  ListTodo, Trash2, BarChart2, Plus, CalendarDays, X, RotateCcw,
 } from 'lucide-react';
 
-const WORK_SECS = 25 * 60;
+const WORK_SECS  = 25 * 60;
 const BREAK_SECS = 5 * 60;
-const DAY_START = 7;   // 07:00
-const DAY_END   = 23;  // 23:00
+const DAY_START  = 7;
+const DAY_END    = 23;
+
+const COLOR_IDLE  = 'rgba(255,255,255,0.18)';
+const COLOR_WORK  = '#4ade80';
+const COLOR_BREAK = '#60a5fa';
+const COLOR_DONE  = '#ffffff';
 
 interface Props {
   tasks: Task[]; events: FixedEvent[]; sessions: StudySession[]; todos: Todo[];
@@ -35,31 +39,40 @@ export const Dashboard: React.FC<Props> = ({
   onAddTodo, onToggleTodo, onDeleteTodo, onClearDoneTodos,
   onOpenManager, onOpenSchedule,
 }) => {
-  const now = new Date();
+  const now       = new Date();
   const todayStr  = now.toISOString().split('T')[0];
   const todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
 
-  // ── Inspector ──────────────────────────────────────────────────────────────
-  const [sel, setSel] = useState<{ type:'study'|'fixed'; id:string; dbId:string; title:string; category:string; start:string; end:string; completed:boolean } | null>(null);
-  const [subText, setSubText] = useState('');
-  const [noteText, setNoteText] = useState('');
+  // ── Inspector ────────────────────────────────────────────────────────────
+  const [sel, setSel] = useState<{type:'study'|'fixed';id:string;dbId:string;title:string;category:string;start:string;end:string;completed:boolean}|null>(null);
+  const [subText,     setSubText]     = useState('');
+  const [noteText,    setNoteText]    = useState('');
   const [editingNote, setEditingNote] = useState(false);
 
-  // ── To-Do ─────────────────────────────────────────────────────────────────
+  // ── To-Do ────────────────────────────────────────────────────────────────
   const [newTodo, setNewTodo] = useState('');
 
-  // ── FAB ───────────────────────────────────────────────────────────────────
+  // ── FAB ──────────────────────────────────────────────────────────────────
   const [fabOpen, setFabOpen] = useState(false);
 
-  // ── Pomodoro ───────────────────────────────────────────────────────────────
-  const [pomMode, setPomMode] = useState<'work'|'break'>('work');
-  const [pomSecs, setPomSecs] = useState(WORK_SECS);
+  // ── Pomodoro ─────────────────────────────────────────────────────────────
+  const [pomMode,    setPomMode]    = useState<'work'|'break'>('work');
+  const [pomSecs,    setPomSecs]    = useState(WORK_SECS);
   const [pomRunning, setPomRunning] = useState(false);
-  const pomRef = useRef<ReturnType<typeof setInterval>|null>(null);
-  const ringRef = useRef<SVGCircleElement>(null);
-  const R = 44;
-  const CIRC = 2 * Math.PI * R;
+  const [pomCount,   setPomCount]   = useState(0); // completed work sessions
+  const pomRef      = useRef<ReturnType<typeof setInterval>|null>(null);
+  const timeTextRef = useRef<HTMLDivElement>(null);
+  const timerCardRef = useRef<HTMLDivElement>(null);
+  const progressRef  = useRef<HTMLDivElement>(null);
 
+  // Animate text color whenever run/pause/mode changes
+  useEffect(() => {
+    if (!timeTextRef.current) return;
+    const color = pomRunning ? (pomMode === 'work' ? COLOR_WORK : COLOR_BREAK) : COLOR_IDLE;
+    animate(timeTextRef.current, { color, duration: 350, ease: 'outQuad' });
+  }, [pomRunning, pomMode]);
+
+  // Tick
   useEffect(() => {
     if (pomRunning) {
       pomRef.current = setInterval(() => {
@@ -68,12 +81,24 @@ export const Dashboard: React.FC<Props> = ({
             clearInterval(pomRef.current!);
             setPomRunning(false);
             const next = pomMode === 'work' ? 'break' : 'work';
+            if (pomMode === 'work') setPomCount(c => c + 1);
             setPomMode(next);
-            const nextSecs = next === 'work' ? WORK_SECS : BREAK_SECS;
-            setPomSecs(nextSecs);
-            // completion flash with anime.js
-            if (ringRef.current) {
-              animate(ringRef.current, { scale: [1, 1.12, 1], duration: 600, ease: 'outElastic(1, .6)' });
+            setPomSecs(next === 'work' ? WORK_SECS : BREAK_SECS);
+            // completion: flash white then fade to idle
+            if (timeTextRef.current) {
+              animate(timeTextRef.current, {
+                color: [COLOR_DONE, COLOR_IDLE],
+                scale: [{ to: 1.04, duration: 120 }, { to: 1, duration: 400 }],
+                duration: 800,
+                ease: 'outElastic(1, .5)',
+              });
+            }
+            if (timerCardRef.current) {
+              animate(timerCardRef.current, {
+                backgroundColor: ['rgba(255,255,255,0.04)', 'rgba(9,13,19,1)'],
+                duration: 600,
+                ease: 'outQuad',
+              });
             }
             return 0;
           }
@@ -86,19 +111,58 @@ export const Dashboard: React.FC<Props> = ({
     return () => { if (pomRef.current) clearInterval(pomRef.current); };
   }, [pomRunning, pomMode]);
 
-  // animate ring whenever secs change
+  // Animate progress bar
   useEffect(() => {
-    if (!ringRef.current) return;
+    if (!progressRef.current) return;
     const total = pomMode === 'work' ? WORK_SECS : BREAK_SECS;
-    const offset = CIRC * (pomSecs / total);
-    animate(ringRef.current, { strokeDashoffset: offset, duration: 900, ease: 'outCubic' });
+    const pct   = ((total - pomSecs) / total) * 100;
+    animate(progressRef.current, {
+      width: `${pct}%`,
+      duration: 950,
+      ease: 'linear',
+    });
   }, [pomSecs, pomMode]);
 
-  const resetPom = () => { setPomRunning(false); setPomMode('work'); setPomSecs(WORK_SECS); };
-  const pomM = String(Math.floor(pomSecs / 60)).padStart(2,'0');
-  const pomS = String(pomSecs % 60).padStart(2,'0');
+  const togglePom = () => {
+    if (!pomRunning && timeTextRef.current) {
+      // brief "arm" flash before starting
+      animate(timeTextRef.current, {
+        color: [COLOR_DONE, pomMode === 'work' ? COLOR_WORK : COLOR_BREAK],
+        scale: [{ to: 0.97, duration: 80 }, { to: 1, duration: 200 }],
+        duration: 280,
+        ease: 'outBack(2)',
+      });
+    }
+    setPomRunning(r => !r);
+  };
 
-  // ── Derived data ───────────────────────────────────────────────────────────
+  const resetPom = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPomRunning(false);
+    setPomMode('work');
+    setPomSecs(WORK_SECS);
+    setPomCount(0);
+    if (timeTextRef.current) animate(timeTextRef.current, { color: COLOR_IDLE, duration: 300 });
+  };
+
+  const switchMode = (m: 'work'|'break', e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPomRunning(false);
+    setPomMode(m);
+    setPomSecs(m === 'work' ? WORK_SECS : BREAK_SECS);
+  };
+
+  const pomM = String(Math.floor(pomSecs / 60)).padStart(2, '0');
+  const pomS = String(pomSecs % 60).padStart(2, '0');
+  const total = pomMode === 'work' ? WORK_SECS : BREAK_SECS;
+  const progressPctTimer = ((total - pomSecs) / total) * 100;
+  const statusLabel = pomRunning
+    ? (pomMode === 'work' ? 'FOCUS' : 'BREAK')
+    : pomSecs === (pomMode === 'work' ? WORK_SECS : BREAK_SECS)
+      ? 'TAP TO START'
+      : 'PAUSED';
+
+  // ── Schedule / task data ─────────────────────────────────────────────────
   const todayTimeline = [
     ...events.filter(e => e.recurring ? e.day === todayName : e.date === todayStr).map(e => ({
       id: e.id, dbId: e.id, title: e.title, type: 'fixed' as const, color: e.color,
@@ -113,13 +177,13 @@ export const Dashboard: React.FC<Props> = ({
     }),
   ].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
-  const todaySessions  = todayTimeline.filter(i => i.type === 'study');
-  const doneSessions   = todaySessions.filter(i => i.completed).length;
-  const totalSessions  = todaySessions.length;
-  const progressPct    = totalSessions > 0 ? (doneSessions / totalSessions) * 100 : 0;
+  const todaySessions = todayTimeline.filter(i => i.type === 'study');
+  const doneSessions  = todaySessions.filter(i => i.completed).length;
+  const totalSessions = todaySessions.length;
+  const progressPct   = totalSessions > 0 ? (doneSessions / totalSessions) * 100 : 0;
 
-  const nextItem = todayTimeline.find(i => new Date(i.start) > now && !i.completed);
-  const nextMins = nextItem ? Math.ceil((new Date(nextItem.start).getTime() - now.getTime()) / 60000) : null;
+  const nextItem  = todayTimeline.find(i => new Date(i.start) > now && !i.completed);
+  const nextMins  = nextItem ? Math.ceil((new Date(nextItem.start).getTime() - now.getTime()) / 60000) : null;
   const nextLabel = nextItem
     ? (nextMins! <= 0 ? 'Now' : nextMins! < 60 ? `${nextMins}m` : `${Math.round(nextMins!/60)}h`)
     : totalSessions > 0 ? 'Done' : '—';
@@ -134,17 +198,22 @@ export const Dashboard: React.FC<Props> = ({
   const upcomingDeadlines = [...activeTasks].filter(t => t.hasDeadline)
     .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime());
 
-  // Weekly stats
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - now.getDay());
   weekStart.setHours(0,0,0,0);
-  const weekSess = sessions.filter(s => new Date(s.start) >= weekStart);
-  const weekDone = weekSess.filter(s => s.completed);
-  const weekHrs  = weekDone.reduce((s, x) => s + (new Date(x.end).getTime() - new Date(x.start).getTime()) / 3600000, 0);
-  const weekRate = weekSess.length > 0 ? Math.round((weekDone.length / weekSess.length) * 100) : 0;
+  const weekSess     = sessions.filter(s => new Date(s.start) >= weekStart);
+  const weekDone     = weekSess.filter(s => s.completed);
+  const weekHrs      = weekDone.reduce((s, x) => s + (new Date(x.end).getTime() - new Date(x.start).getTime()) / 3600000, 0);
+  const weekRate     = weekSess.length > 0 ? Math.round((weekDone.length / weekSess.length) * 100) : 0;
   const weekTasksDone = tasks.filter(t => t.status === 'completed').length;
 
-  // Inspector details
+  // Mini schedule helpers
+  const DAY_MINS = (DAY_END - DAY_START) * 60;
+  const toMins   = (iso: string) => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
+  const pct      = (m: number) => Math.min(100, Math.max(0, ((m - DAY_START*60) / DAY_MINS) * 100));
+  const nowPct   = pct(now.getHours() * 60 + now.getMinutes());
+
+  // Inspector
   let insp: any = null;
   if (sel) {
     if (sel.type === 'fixed') {
@@ -155,39 +224,17 @@ export const Dashboard: React.FC<Props> = ({
       const t = tasks.find(t => t.id === sel.dbId);
       if (s && t) {
         const a = new Date(s.start), b = new Date(s.end);
-        const ot: Intl.DateTimeFormatOptions = { hour:'2-digit', minute:'2-digit', hour12: false };
+        const ot: Intl.DateTimeFormatOptions = { hour:'2-digit', minute:'2-digit', hour12:false };
         insp = { title: t.title, category: t.category, timeRange: `${a.toLocaleDateString([],{month:'short',day:'numeric'})} • ${a.toLocaleTimeString([],ot)}–${b.toLocaleTimeString([],ot)}`, notes: t.notes || '', subtasks: t.subtasks || [], color: t.color, priority: t.priority };
       }
     }
   }
 
-  // Helpers
-  function fmtDate(d?: string) {
-    if (!d) return '?';
-    const [y,m,dd] = d.split('-');
-    return `${dd}/${m}/${y.slice(-2)}`;
-  }
-  function prioEmoji(p: string) { return p === 'high' ? '🔥' : p === 'medium' ? '💓' : '🛌'; }
-  function catEmoji(c: string) {
-    switch(c){ case 'assignment': return '📝'; case 'quiz': return '❓'; case 'program': return '💻'; case 'date': return '📅'; case 'training': return '💪'; default: return '•'; }
-  }
-  function fmtRange(a: string, b: string) {
-    const f = (d: Date) => d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', hour12: false });
-    return `${f(new Date(a))} – ${f(new Date(b))}`;
-  }
+  function fmtDate(d?: string) { if(!d) return '?'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y.slice(-2)}`; }
+  function prioEmoji(p: string) { return p==='high'?'🔥':p==='medium'?'💓':'🛌'; }
+  function catEmoji(c: string) { switch(c){case 'assignment':return'📝';case 'quiz':return'❓';case 'program':return'💻';case 'date':return'📅';case 'training':return'💪';default:return'•';} }
+  function fmtRange(a:string,b:string){const f=(d:Date)=>d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});return`${f(new Date(a))} – ${f(new Date(b))}`;}
 
-  // Mini schedule helpers
-  function toMinutes(iso: string) {
-    const d = new Date(iso);
-    return d.getHours() * 60 + d.getMinutes();
-  }
-  const DAY_MINS = (DAY_END - DAY_START) * 60;
-  function pct(mins: number) {
-    return Math.min(100, Math.max(0, ((mins - DAY_START * 60) / DAY_MINS) * 100));
-  }
-  const nowPct = pct(now.getHours() * 60 + now.getMinutes());
-
-  // Sub-task / note handlers
   const toggleSub = async (subId: string) => {
     if (!sel || sel.type !== 'study') return;
     const t = tasks.find(t => t.id === sel.dbId);
@@ -215,8 +262,6 @@ export const Dashboard: React.FC<Props> = ({
     else await onDeleteEvent(sel.dbId);
     setSel(null);
   };
-
-  // Todo add
   const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTodo.trim()) return;
@@ -224,61 +269,131 @@ export const Dashboard: React.FC<Props> = ({
     setNewTodo('');
   };
 
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem', maxWidth:'100%', overflowX:'hidden', paddingBottom:'100px' }}>
 
-      {/* ── MINI SCHEDULE ──────────────────────────────────────────────────── */}
+      {/* ══ TIMER HERO ══════════════════════════════════════════════════════ */}
+      <div
+        ref={timerCardRef}
+        onClick={togglePom}
+        style={{
+          backgroundColor: '#090d13',
+          borderRadius: 'var(--border-radius-lg)',
+          border: '1px solid rgba(255,255,255,0.05)',
+          padding: '2rem 1.5rem 0',
+          cursor: 'pointer',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          position: 'relative',
+          overflow: 'hidden',
+          minHeight: '220px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        {/* Top row: mode tabs + session count + reset */}
+        <div style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
+          <div style={{ display:'flex', gap:'0.35rem' }} onClick={e => e.stopPropagation()}>
+            {(['work','break'] as const).map(m => (
+              <button key={m} onClick={e => switchMode(m, e)}
+                style={{ padding:'3px 12px', borderRadius:'20px', border:'none', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', backgroundColor: pomMode===m ? 'rgba(255,255,255,0.1)' : 'transparent', color: pomMode===m ? '#fff' : 'rgba(255,255,255,0.25)', transition:'all 0.2s' }}>
+                {m === 'work' ? 'Focus' : 'Break'}
+              </button>
+            ))}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+            {pomCount > 0 && (
+              <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.25)', letterSpacing:'0.05em' }}>
+                {pomCount} {pomCount===1?'session':'sessions'}
+              </span>
+            )}
+            <button onClick={resetPom} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.2)', padding:'4px', display:'flex', transition:'color 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.color='rgba(255,255,255,0.6)')}
+              onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,0.2)')}>
+              <RotateCcw size={14}/>
+            </button>
+          </div>
+        </div>
+
+        {/* THE TIME — big, monospace, anime.js controls color */}
+        <div
+          ref={timeTextRef}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'clamp(4.5rem, 18vw, 8rem)',
+            fontWeight: 700,
+            letterSpacing: '-0.04em',
+            lineHeight: 1,
+            color: COLOR_IDLE,
+            transition: 'none',
+          }}
+        >
+          {pomM}:{pomS}
+        </div>
+
+        {/* Status label */}
+        <div style={{ marginTop:'1rem', marginBottom:'1.5rem', fontSize:'0.65rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(255,255,255,0.2)', fontFamily:'var(--font-mono)', transition:'opacity 0.3s' }}>
+          {statusLabel}
+        </div>
+
+        {/* Progress bar — bottom edge of card */}
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'3px', backgroundColor:'rgba(255,255,255,0.04)' }}>
+          <div
+            ref={progressRef}
+            style={{
+              height:'100%',
+              width:`${progressPctTimer}%`,
+              backgroundColor: pomMode==='work' ? COLOR_WORK : COLOR_BREAK,
+              opacity: 0.7,
+              borderRadius:'0 2px 2px 0',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* ══ MINI SCHEDULE ═══════════════════════════════════════════════════ */}
       <div className="card" style={{ padding:'1rem' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', color:'#fff', fontWeight:600, fontSize:'0.9rem' }}>
-            <CalendarDays size={16} className="logo-icon" />
+            <CalendarDays size={16} className="logo-icon"/>
             <span>{todayName}</span>
-            <span style={{ color:'var(--text-muted)', fontWeight:400, fontSize:'0.78rem', marginLeft:'0.25rem' }}>{new Date().toLocaleDateString([],{month:'short',day:'numeric'})}</span>
+            <span style={{ color:'var(--text-muted)', fontWeight:400, fontSize:'0.78rem', marginLeft:'0.2rem' }}>{now.toLocaleDateString([],{month:'short',day:'numeric'})}</span>
           </div>
           <button onClick={onOpenSchedule} className="btn btn-secondary" style={{ padding:'4px 12px', fontSize:'0.75rem' }}>Full view</button>
         </div>
-
-        {/* Horizontal timeline bar */}
         <div style={{ position:'relative', height:'36px', backgroundColor:'rgba(255,255,255,0.03)', borderRadius:'8px', overflow:'hidden' }}>
-          {/* Hour markers */}
           {[8,10,12,14,16,18,20,22].map(h => (
             <div key={h} style={{ position:'absolute', left:`${pct(h*60)}%`, top:0, bottom:0, width:'1px', backgroundColor:'rgba(255,255,255,0.05)' }}>
               <span style={{ position:'absolute', top:'2px', left:'2px', fontSize:'9px', color:'var(--text-muted)' }}>{h}</span>
             </div>
           ))}
-
-          {/* Blocks */}
           {todayTimeline.map(item => {
-            const s = pct(toMinutes(item.start));
-            const e = pct(toMinutes(item.end));
+            const s = pct(toMins(item.start)), e = pct(toMins(item.end));
             const w = Math.max(e - s, 1.5);
             return (
-              <div key={item.id} title={item.title}
-                onClick={() => setSel({ type:item.type, id:item.id, dbId:item.dbId, title:item.title, category:item.type==='fixed'?'fixed commitment':'study block', start:item.start, end:item.end, completed:item.completed })}
-                style={{ position:'absolute', left:`${s}%`, width:`${w}%`, top:'6px', bottom:'6px', backgroundColor: item.completed ? 'rgba(52,211,153,0.4)' : item.color + 'cc', borderRadius:'4px', cursor:'pointer', minWidth:'6px', transition:'opacity 0.15s' }}
+              <div key={item.id} title={item.title} onClick={() => setSel({ type:item.type, id:item.id, dbId:item.dbId, title:item.title, category:item.type==='fixed'?'fixed event':'study block', start:item.start, end:item.end, completed:item.completed })}
+                style={{ position:'absolute', left:`${s}%`, width:`${w}%`, top:'6px', bottom:'6px', backgroundColor: item.completed ? 'rgba(52,211,153,0.4)' : item.color+'cc', borderRadius:'4px', cursor:'pointer', minWidth:'6px' }}
               />
             );
           })}
-
-          {/* Now line */}
           {nowPct > 0 && nowPct < 100 && (
-            <div style={{ position:'absolute', left:`${nowPct}%`, top:0, bottom:0, width:'2px', backgroundColor:'#fff', opacity:0.7, borderRadius:'1px' }} />
+            <div style={{ position:'absolute', left:`${nowPct}%`, top:0, bottom:0, width:'2px', backgroundColor:'#fff', opacity:0.6, borderRadius:'1px' }}/>
           )}
         </div>
-
-        {/* Time labels */}
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:'4px', fontSize:'0.68rem', color:'var(--text-muted)' }}>
           <span>07:00</span><span>23:00</span>
         </div>
       </div>
 
-      {/* ── DAILY PROGRESS STRIP ──────────────────────────────────────────── */}
+      {/* ══ DAILY PROGRESS ══════════════════════════════════════════════════ */}
       <div className="card" style={{ padding:'0.9rem 1.1rem', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0.75rem' }}>
         <div>
           <div style={{ fontSize:'0.65rem', color:'var(--text-muted)', marginBottom:'0.25rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Today</div>
           <div style={{ fontSize:'1rem', fontWeight:700, color:'#fff' }}>{doneSessions}<span style={{ fontSize:'0.75rem', fontWeight:400, color:'var(--text-secondary)' }}>/{totalSessions}</span></div>
           <div style={{ marginTop:'0.35rem', height:'3px', borderRadius:'2px', backgroundColor:'rgba(255,255,255,0.06)' }}>
-            <div style={{ height:'100%', width:`${progressPct}%`, borderRadius:'2px', backgroundColor: progressPct===100 ? '#34d399' : 'var(--primary)', transition:'width 0.4s' }} />
+            <div style={{ height:'100%', width:`${progressPct}%`, borderRadius:'2px', backgroundColor: progressPct===100?'#34d399':'var(--primary)', transition:'width 0.4s' }}/>
           </div>
         </div>
         <div style={{ borderLeft:'1px solid var(--border-color)', paddingLeft:'0.75rem' }}>
@@ -286,7 +401,7 @@ export const Dashboard: React.FC<Props> = ({
           {nextItem
             ? <div style={{ display:'flex', alignItems:'center', gap:'0.25rem' }}>
                 <span style={{ fontSize:'0.8rem', fontWeight:600, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'80px' }}>{nextItem.title}</span>
-                <ArrowRight size={11} color="var(--text-muted)" />
+                <ArrowRight size={11} color="var(--text-muted)"/>
                 <span style={{ fontSize:'0.7rem', color:'var(--accent)', whiteSpace:'nowrap' }}>{nextLabel}</span>
               </div>
             : <span style={{ fontSize:'0.8rem', color:'var(--text-secondary)' }}>{nextLabel}</span>
@@ -297,14 +412,14 @@ export const Dashboard: React.FC<Props> = ({
           {overdue.length === 0
             ? <span style={{ fontSize:'0.8rem', color:'#34d399' }}>None</span>
             : <div style={{ display:'flex', alignItems:'center', gap:'0.3rem' }}>
-                <AlertCircle size={13} color="#f87171" />
+                <AlertCircle size={13} color="#f87171"/>
                 <span style={{ fontSize:'1rem', fontWeight:700, color:'#f87171' }}>{overdue.length}</span>
               </div>
           }
         </div>
       </div>
 
-      {/* ── INSPECTOR ─────────────────────────────────────────────────────── */}
+      {/* ══ INSPECTOR ═══════════════════════════════════════════════════════ */}
       {sel && insp && (
         <div className="card" style={{ border:`1.5px solid ${insp.color}` }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', borderBottom:'1px solid var(--border-color)', paddingBottom:'0.7rem', marginBottom:'1rem' }}>
@@ -317,7 +432,6 @@ export const Dashboard: React.FC<Props> = ({
             </div>
             <button onClick={() => setSel(null)} className="btn btn-secondary" style={{ padding:'5px 10px', fontSize:'0.7rem' }}>Close</button>
           </div>
-
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
             <div>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.4rem' }}>
@@ -325,7 +439,7 @@ export const Dashboard: React.FC<Props> = ({
                 <button onClick={() => { if(editingNote) saveNote(); else { setNoteText(insp.notes); setEditingNote(true); } }} className="btn btn-secondary" style={{ padding:'3px 9px', fontSize:'0.68rem' }}>{editingNote ? 'Save' : 'Edit'}</button>
               </div>
               {editingNote
-                ? <textarea className="form-control" style={{ width:'100%', minHeight:'70px', fontSize:'0.85rem', boxSizing:'border-box' }} value={noteText} onChange={e => setNoteText(e.target.value)} />
+                ? <textarea className="form-control" style={{ width:'100%', minHeight:'70px', fontSize:'0.85rem', boxSizing:'border-box' }} value={noteText} onChange={e => setNoteText(e.target.value)}/>
                 : <div style={{ backgroundColor:'rgba(0,0,0,0.15)', padding:'0.75rem', borderRadius:'8px', fontSize:'0.85rem', color:'var(--text-secondary)', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{insp.notes || 'No notes.'}</div>
               }
             </div>
@@ -340,11 +454,11 @@ export const Dashboard: React.FC<Props> = ({
                   {insp.subtasks.map((st: any) => (
                     <div key={st.id} onClick={() => toggleSub(st.id)} style={{ display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'0.85rem', cursor:'pointer', padding:'3px' }}>
                       {st.completed ? <CheckSquare size={16} color="#34d399"/> : <Square size={16} color="var(--text-muted)"/>}
-                      <span style={{ textDecoration: st.completed ? 'line-through' : 'none', color: st.completed ? 'var(--text-muted)' : '#fff' }}>{st.text}</span>
+                      <span style={{ textDecoration:st.completed?'line-through':'none', color:st.completed?'var(--text-muted)':'#fff' }}>{st.text}</span>
                     </div>
                   ))}
                   <form onSubmit={addSub} style={{ display:'flex', gap:'6px', marginTop:'4px' }}>
-                    <input type="text" className="form-control" placeholder="Add item…" value={subText} onChange={e => setSubText(e.target.value)} style={{ flex:1, padding:'7px 10px', fontSize:'0.82rem' }} />
+                    <input type="text" className="form-control" placeholder="Add item…" value={subText} onChange={e => setSubText(e.target.value)} style={{ flex:1, padding:'7px 10px', fontSize:'0.82rem' }}/>
                     <button type="submit" className="btn btn-primary" style={{ padding:'7px 14px', fontSize:'0.82rem' }}>Add</button>
                   </form>
                 </div>
@@ -354,13 +468,10 @@ export const Dashboard: React.FC<Props> = ({
         </div>
       )}
 
-      {/* ── TODAY'S SCHEDULE ──────────────────────────────────────────────── */}
+      {/* ══ TODAY'S SCHEDULE ════════════════════════════════════════════════ */}
       <div className="card">
         <div className="card-title" style={{ justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}>
-            <Clock className="logo-icon" size={18}/>
-            <h3>Today</h3>
-          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}><Clock className="logo-icon" size={18}/><h3>Today</h3></div>
           <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>{todayName}</span>
         </div>
         {todayTimeline.length === 0
@@ -371,7 +482,7 @@ export const Dashboard: React.FC<Props> = ({
                 const dur = (new Date(item.end).getTime() - new Date(item.start).getTime()) / 3600000;
                 return (
                   <div key={item.id} className="timeline-item" style={{ gap:'0.75rem' }}>
-                    <div className="timeline-time" style={{ width:'72px', fontSize:'0.72rem' }}>{fmtRange(item.start, item.end)}</div>
+                    <div className="timeline-time" style={{ width:'72px', fontSize:'0.72rem' }}>{fmtRange(item.start,item.end)}</div>
                     <div className="timeline-marker"><div className="timeline-dot" style={{ backgroundColor:item.color }}/><div className="timeline-line"/></div>
                     <div className="timeline-content">
                       <div className="timeline-card" style={{ borderLeft:`3px solid ${item.color}`, padding:'0.6rem 0.9rem' }}>
@@ -380,7 +491,7 @@ export const Dashboard: React.FC<Props> = ({
                           <div style={{ fontSize:'0.7rem', color:'var(--text-secondary)', marginTop:'2px' }}>{dur.toFixed(1)}h • {item.category}</div>
                         </div>
                         {isStudy && (
-                          <button onClick={() => onToggleSession(item.id, !item.completed, dur, item.dbId)} className="btn" style={{ padding:'5px 10px', fontSize:'0.7rem', backgroundColor: item.completed ? 'rgba(52,211,153,0.1)' : 'transparent', border:'1px solid var(--border-color)', color: item.completed ? '#34d399' : '#fff' }}>
+                          <button onClick={() => onToggleSession(item.id,!item.completed,dur,item.dbId)} className="btn" style={{ padding:'5px 10px', fontSize:'0.7rem', backgroundColor:item.completed?'rgba(52,211,153,0.1)':'transparent', border:'1px solid var(--border-color)', color:item.completed?'#34d399':'#fff' }}>
                             <CheckCircle2 size={13}/>
                           </button>
                         )}
@@ -393,7 +504,7 @@ export const Dashboard: React.FC<Props> = ({
         }
       </div>
 
-      {/* ── TASKS & DEADLINES ─────────────────────────────────────────────── */}
+      {/* ══ TASKS & DEADLINES ═══════════════════════════════════════════════ */}
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-title"><Star size={18} className="logo-icon"/><h3>Priorities</h3></div>
@@ -416,7 +527,6 @@ export const Dashboard: React.FC<Props> = ({
             }
           </div>
         </div>
-
         <div className="card">
           <div className="card-title"><Bookmark size={18} className="logo-icon"/><h3>Deadlines</h3></div>
           <div style={{ display:'flex', flexDirection:'column', gap:'0.6rem' }}>
@@ -445,96 +555,46 @@ export const Dashboard: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* ── WEEKLY STATS + POMODORO ───────────────────────────────────────── */}
-      <div className="dashboard-grid">
-        <div className="card">
-          <div className="card-title"><BarChart2 size={18} className="logo-icon"/><h3>This Week</h3></div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
-            {[
-              { label:'Sessions', value:`${weekDone.length}/${weekSess.length}` },
-              { label:'Hours', value:`${weekHrs.toFixed(1)}h` },
-              { label:'Completion', value:`${weekRate}%` },
-              { label:'Tasks done', value:`${weekTasksDone}` },
-            ].map(s => (
-              <div key={s.label} style={{ padding:'0.65rem', backgroundColor:'rgba(255,255,255,0.02)', borderRadius:'8px', border:'1px solid var(--border-color)' }}>
-                <div style={{ fontSize:'0.6rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'0.2rem' }}>{s.label}</div>
-                <div style={{ fontSize:'1.15rem', fontWeight:700, color:'#fff' }}>{s.value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-title"><Timer size={18} className="logo-icon"/><h3>Focus Timer</h3></div>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.85rem' }}>
-            <div style={{ display:'flex', gap:'0.4rem' }}>
-              {(['work','break'] as const).map(m => (
-                <button key={m} onClick={() => { setPomMode(m); setPomRunning(false); setPomSecs(m==='work'?WORK_SECS:BREAK_SECS); }}
-                  className="btn" style={{ padding:'3px 12px', fontSize:'0.72rem', backgroundColor: pomMode===m ? 'var(--primary)' : 'transparent', border:`1px solid ${pomMode===m ? 'var(--primary)' : 'var(--border-color)'}`, color: pomMode===m ? '#fff' : 'var(--text-secondary)' }}>
-                  {m === 'work' ? 'Focus' : 'Break'}
-                </button>
-              ))}
+      {/* ══ WEEKLY STATS ════════════════════════════════════════════════════ */}
+      <div className="card">
+        <div className="card-title"><BarChart2 size={18} className="logo-icon"/><h3>This Week</h3></div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'0.75rem' }}>
+          {[
+            { label:'Sessions', value:`${weekDone.length}/${weekSess.length}` },
+            { label:'Hours',    value:`${weekHrs.toFixed(1)}h` },
+            { label:'Rate',     value:`${weekRate}%` },
+            { label:'Done',     value:`${weekTasksDone}` },
+          ].map(s => (
+            <div key={s.label} style={{ padding:'0.65rem', backgroundColor:'rgba(255,255,255,0.02)', borderRadius:'8px', border:'1px solid var(--border-color)', textAlign:'center' }}>
+              <div style={{ fontSize:'0.58rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'0.2rem' }}>{s.label}</div>
+              <div style={{ fontSize:'1.1rem', fontWeight:700, color:'#fff' }}>{s.value}</div>
             </div>
-
-            <div style={{ position:'relative', width:'90px', height:'90px' }}>
-              <svg width="90" height="90" style={{ transform:'rotate(-90deg)', overflow:'visible' }}>
-                <circle cx="45" cy="45" r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7"/>
-                <circle ref={ringRef} cx="45" cy="45" r={R} fill="none"
-                  stroke={pomMode==='work' ? 'var(--primary)' : '#34d399'}
-                  strokeWidth="7" strokeLinecap="round"
-                  strokeDasharray={CIRC}
-                  strokeDashoffset={CIRC}
-                  style={{ transformOrigin:'center' }}
-                />
-              </svg>
-              <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <span style={{ fontSize:'1.2rem', fontWeight:700, color:'#fff', fontVariantNumeric:'tabular-nums' }}>{pomM}:{pomS}</span>
-              </div>
-            </div>
-
-            <div style={{ display:'flex', gap:'0.6rem' }}>
-              <button onClick={() => setPomRunning(r => !r)} className="btn btn-primary" style={{ padding:'7px 18px', fontSize:'0.82rem', display:'flex', alignItems:'center', gap:'0.35rem' }}>
-                {pomRunning ? <Pause size={13}/> : <Play size={13}/>}
-                {pomRunning ? 'Pause' : 'Start'}
-              </button>
-              <button onClick={resetPom} className="btn btn-secondary" style={{ padding:'7px 11px' }}><RotateCcw size={13}/></button>
-            </div>
-            <p style={{ fontSize:'0.7rem', color:'var(--text-muted)', textAlign:'center', margin:0 }}>
-              {pomMode==='work' ? '25 min focus' : '5 min break'}
-            </p>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* ── QUICK TO-DO ───────────────────────────────────────────────────── */}
+      {/* ══ QUICK TO-DO ══════════════════════════════════════════════════════ */}
       <div className="card">
         <div className="card-title" style={{ justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}>
-            <ListTodo size={18} className="logo-icon"/>
-            <h3>To-Do</h3>
-          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}><ListTodo size={18} className="logo-icon"/><h3>To-Do</h3></div>
           <div style={{ display:'flex', alignItems:'center', gap:'0.6rem' }}>
             <span style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>{todos.filter(t=>t.done).length}/{todos.length}</span>
-            {todos.some(t=>t.done) && (
-              <button onClick={onClearDoneTodos} className="btn btn-secondary" style={{ padding:'3px 9px', fontSize:'0.7rem' }}>Clear</button>
-            )}
+            {todos.some(t=>t.done) && <button onClick={onClearDoneTodos} className="btn btn-secondary" style={{ padding:'3px 9px', fontSize:'0.7rem' }}>Clear</button>}
           </div>
         </div>
-
         <form onSubmit={handleAddTodo} style={{ display:'flex', gap:'0.5rem', marginBottom:'0.85rem' }}>
-          <input type="text" className="form-control" placeholder="Add a to-do…" value={newTodo} onChange={e => setNewTodo(e.target.value)} style={{ flex:1, padding:'8px 11px', fontSize:'0.88rem' }} />
+          <input type="text" className="form-control" placeholder="Add a to-do…" value={newTodo} onChange={e => setNewTodo(e.target.value)} style={{ flex:1, padding:'8px 11px', fontSize:'0.88rem' }}/>
           <button type="submit" className="btn btn-primary" style={{ padding:'8px 14px', fontSize:'0.82rem' }}>Add</button>
         </form>
-
         {todos.length === 0
           ? <p style={{ textAlign:'center', padding:'1.25rem', color:'var(--text-muted)', fontSize:'0.82rem' }}>Nothing here yet.</p>
           : <div style={{ display:'flex', flexDirection:'column', gap:'0.45rem' }}>
               {todos.map(todo => (
-                <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.55rem 0.7rem', borderRadius:'8px', backgroundColor: todo.done ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.025)', border:'1px solid var(--border-color)' }}>
-                  <button onClick={() => onToggleTodo(todo.id, !todo.done)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, color: todo.done ? '#34d399' : 'var(--text-muted)', display:'flex', flexShrink:0 }}>
+                <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.55rem 0.7rem', borderRadius:'8px', backgroundColor:todo.done?'rgba(255,255,255,0.01)':'rgba(255,255,255,0.025)', border:'1px solid var(--border-color)' }}>
+                  <button onClick={() => onToggleTodo(todo.id,!todo.done)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:todo.done?'#34d399':'var(--text-muted)', display:'flex', flexShrink:0 }}>
                     {todo.done ? <CheckCircle2 size={17}/> : <Square size={17}/>}
                   </button>
-                  <span style={{ flex:1, fontSize:'0.88rem', color: todo.done ? 'var(--text-muted)' : '#fff', textDecoration: todo.done ? 'line-through' : 'none' }}>{todo.text}</span>
+                  <span style={{ flex:1, fontSize:'0.88rem', color:todo.done?'var(--text-muted)':'#fff', textDecoration:todo.done?'line-through':'none' }}>{todo.text}</span>
                   <button onClick={() => onDeleteTodo(todo.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:'var(--text-muted)', display:'flex', opacity:0.5 }}>
                     <Trash2 size={13}/>
                   </button>
@@ -544,15 +604,15 @@ export const Dashboard: React.FC<Props> = ({
         }
       </div>
 
-      {/* ── FAB ───────────────────────────────────────────────────────────── */}
+      {/* ══ FAB ══════════════════════════════════════════════════════════════ */}
       <div style={{ position:'fixed', bottom:'calc(24px + env(safe-area-inset-bottom))', right:'20px', zIndex:500, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'10px' }}>
         {fabOpen && (
           <>
             {[
-              { label:'Add Task', onClick: onOpenManager },
+              { label:'Add Task',  onClick: onOpenManager },
               { label:'Add Class', onClick: onOpenManager },
-              { label:'Manage', onClick: onOpenManager },
-            ].map((item, i) => (
+              { label:'Manage',    onClick: onOpenManager },
+            ].map((item,i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                 <span style={{ backgroundColor:'rgba(25,35,48,0.95)', color:'#fff', padding:'4px 10px', borderRadius:'6px', fontSize:'0.78rem', fontWeight:500, backdropFilter:'blur(8px)', border:'1px solid var(--border-color)' }}>{item.label}</span>
                 <button onClick={() => { item.onClick(); setFabOpen(false); }} className="btn btn-secondary" style={{ width:'40px', height:'40px', borderRadius:'50%', padding:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -562,7 +622,7 @@ export const Dashboard: React.FC<Props> = ({
             ))}
           </>
         )}
-        <button onClick={() => setFabOpen(o => !o)} style={{ width:'52px', height:'52px', borderRadius:'50%', backgroundColor:'var(--primary)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px rgba(234,84,85,0.4)', transition:'transform 0.2s', transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+        <button onClick={() => setFabOpen(o=>!o)} style={{ width:'52px', height:'52px', borderRadius:'50%', backgroundColor:'var(--primary)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px rgba(234,84,85,0.4)', transform: fabOpen?'rotate(45deg)':'rotate(0deg)', transition:'transform 0.2s' }}>
           {fabOpen ? <X size={22} color="#fff"/> : <Plus size={22} color="#fff"/>}
         </button>
       </div>
