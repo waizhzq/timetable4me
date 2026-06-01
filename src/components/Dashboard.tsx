@@ -9,7 +9,9 @@ import {
   Star,
   FileText,
   CheckSquare,
-  Square
+  Square,
+  AlertCircle,
+  ArrowRight
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -193,6 +195,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
     })
   ].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
+  const todayStudySessions = todayTimeline.filter(i => i.type === 'study');
+  const completedToday = todayStudySessions.filter(i => i.completed).length;
+  const totalToday = todayStudySessions.length;
+  const progressPct = totalToday > 0 ? (completedToday / totalToday) * 100 : 0;
+
+  const nextItem = todayTimeline.find(i => new Date(i.start) > now && !i.completed);
+  const nextMins = nextItem ? Math.ceil((new Date(nextItem.start).getTime() - now.getTime()) / 60000) : null;
+  const nextLabel = nextItem
+    ? nextMins! <= 0 ? 'Starting now' : nextMins! < 60 ? `in ${nextMins}m` : `in ${Math.round(nextMins! / 60)}h`
+    : totalToday > 0 ? 'All done' : '—';
+
+  const overdueTasks = tasks.filter(
+    t => t.status !== 'completed' && t.hasDeadline && t.deadline && t.deadline < todayStr
+  );
+
   const formatTimeRange = (startISO: string, endISO: string) => {
     const s = new Date(startISO);
     const e = new Date(endISO);
@@ -212,7 +229,47 @@ export const Dashboard: React.FC<DashboardProps> = ({
           Open Schedule
         </button>
       </div>
-      {/* 2. INSPECTOR */}
+      {/* 2. DAILY PROGRESS STRIP */}
+      <div className="card" style={{ padding: '1rem 1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+        {/* Sessions progress */}
+        <div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Today</div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{completedToday}<span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-secondary)' }}>/{totalToday} sessions</span></div>
+          <div style={{ marginTop: '0.4rem', height: '4px', borderRadius: '2px', backgroundColor: 'rgba(255,255,255,0.06)' }}>
+            <div style={{ height: '100%', width: `${progressPct}%`, borderRadius: '2px', backgroundColor: progressPct === 100 ? '#34d399' : 'var(--primary)', transition: 'width 0.4s ease' }} />
+          </div>
+        </div>
+
+        {/* Next up */}
+        <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem' }}>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Next up</div>
+          {nextItem ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{nextItem.title}</span>
+              <ArrowRight size={12} color="var(--text-muted)" />
+              <span style={{ fontSize: '0.75rem', color: 'var(--accent)', whiteSpace: 'nowrap' }}>{nextLabel}</span>
+            </div>
+          ) : (
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{nextLabel}</span>
+          )}
+        </div>
+
+        {/* Overdue */}
+        <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem' }}>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overdue</div>
+          {overdueTasks.length === 0 ? (
+            <span style={{ fontSize: '0.85rem', color: '#34d399' }}>None</span>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <AlertCircle size={14} color="#f87171" />
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f87171' }}>{overdueTasks.length}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>task{overdueTasks.length !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3. INSPECTOR */}
       {selectedBlock && inspectorDetails && (
         <div className="card" style={{ border: `1.5px solid ${inspectorDetails.color}`, animation: 'fadeIn 0.2s ease-out' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
@@ -261,7 +318,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* 3. TODAY'S SCHEDULE */}
+      {/* 4. TODAY'S SCHEDULE */}
       <div className="card">
         <div className="card-title" style={{ justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -302,7 +359,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         )}
       </div>
 
-      {/* 4. TASKS & DEADLINES */}
+      {/* 5. TASKS & DEADLINES */}
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-title"><Star size={20} className="logo-icon" /><h3>Priorities</h3></div>
@@ -326,12 +383,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="card">
           <div className="card-title"><Bookmark size={20} className="logo-icon" /><h3>Deadlines</h3></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {upcomingDeadlines.length === 0 ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>No upcoming deadlines.</p> : upcomingDeadlines.slice(0, 5).map(task => (
-              <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '0.6rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                <span style={{ color: '#fff' }}>{getCategoryEmoji(task.category)} {task.title}</span>
-                <span style={{ color: task.color, fontWeight: 700 }}>{formatDateDDMMYY(task.deadline)}</span>
-              </div>
-            ))}
+            {overdueTasks.length > 0 && (
+              <>
+                <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#f87171', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <AlertCircle size={11} /> Overdue
+                </div>
+                {overdueTasks.map(task => (
+                  <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '0.5rem 0.6rem', borderRadius: '6px', backgroundColor: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.15)' }}>
+                    <span style={{ color: '#fca5a5' }}>{getCategoryEmoji(task.category)} {task.title}</span>
+                    <span style={{ color: '#f87171', fontWeight: 700 }}>{formatDateDDMMYY(task.deadline)}</span>
+                  </div>
+                ))}
+                {upcomingDeadlines.length > 0 && <div style={{ height: '1px', backgroundColor: 'var(--border-color)' }} />}
+              </>
+            )}
+            {upcomingDeadlines.length === 0 && overdueTasks.length === 0
+              ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>No upcoming deadlines.</p>
+              : upcomingDeadlines.slice(0, 5).map(task => (
+                <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '0.6rem 0', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: '#fff' }}>{getCategoryEmoji(task.category)} {task.title}</span>
+                  <span style={{ color: task.color, fontWeight: 700 }}>{formatDateDDMMYY(task.deadline)}</span>
+                </div>
+              ))
+            }
           </div>
         </div>
       </div>
