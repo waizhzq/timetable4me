@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { animate, createTimer } from 'animejs';
+import { animate } from 'animejs';
 import type { Task, FixedEvent, StudySession, Todo } from '../services/db';
 import { calculatePriorityScore } from '../services/scheduler';
 import {
