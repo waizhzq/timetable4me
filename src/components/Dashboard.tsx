@@ -40,7 +40,7 @@ const DurationPill: React.FC<{
   <div style={{ display:'flex', alignItems:'center', gap:'0', backgroundColor:'rgba(255,255,255,0.05)', borderRadius:'20px', border:'1px solid rgba(255,255,255,0.07)', overflow:'hidden' }}>
     <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.35)', padding:'4px 10px 4px 12px', letterSpacing:'0.06em', textTransform:'uppercase', userSelect:'none' }}>{label}</span>
     <button onClick={onDec} style={{ background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.07)', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:'4px 9px', fontSize:'1rem', lineHeight:1, display:'flex', alignItems:'center' }}>−</button>
-    <span style={{ fontFamily:"'Overtime', 'VT323', monospace", fontSize:'1.05rem', color:'#fff', padding:'0 6px', minWidth:'28px', textAlign:'center', userSelect:'none' }}>{value}{step > 1 ? 'm' : ''}</span>
+    <span style={{ fontFamily:"'DS-Digital', monospace", fontSize:'1.05rem', color:'#fff', padding:'0 6px', minWidth:'28px', textAlign:'center', userSelect:'none' }}>{value}{step > 1 ? 'm' : ''}</span>
     <button onClick={onInc} style={{ background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.07)', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:'4px 9px', fontSize:'1rem', lineHeight:1, display:'flex', alignItems:'center' }}>+</button>
   </div>
 );
@@ -372,7 +372,7 @@ export const Dashboard: React.FC<Props> = ({
         {/* THE TIME */}
         <div
           ref={timeTextRef}
-          style={{ fontFamily:"'Overtime', 'VT323', monospace", fontSize:'clamp(5rem, 20vw, 9.5rem)', fontWeight:400, letterSpacing:'0.02em', lineHeight:1, color:COLOR_IDLE, transition:'none', display:'flex', alignItems:'baseline' }}
+          style={{ fontFamily:"'DS-Digital', monospace", fontSize:'clamp(5rem, 20vw, 9.5rem)', fontWeight:400, letterSpacing:'0.02em', lineHeight:1, color:COLOR_IDLE, transition:'none', display:'flex', alignItems:'baseline' }}
         >
           <span>{pomM}:{pomS}</span>
           <span ref={msDisplayRef} style={{ fontSize:'0.45em', opacity:0.8, letterSpacing:0, marginLeft:'0.08em' }}>.00</span>
