@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 
 interface ScheduleViewProps {
-  tasks: Task[];
   events: FixedEvent[];
   sessions: StudySession[];
   onBack: () => void;
@@ -18,7 +17,6 @@ interface ScheduleViewProps {
 }
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
-  tasks,
   events,
   sessions,
   onBack,

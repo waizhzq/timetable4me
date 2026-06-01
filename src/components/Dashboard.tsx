@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Task, FixedEvent, StudySession, UserPreferences } from '../services/db';
+import type { Task, FixedEvent, StudySession } from '../services/db';
 import { calculatePriorityScore } from '../services/scheduler';
 import {
   Calendar,

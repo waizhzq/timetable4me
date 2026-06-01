@@ -438,23 +438,16 @@ function App() {
             tasks={tasks}
             events={events}
             sessions={sessions}
-            preferences={preferences}
-            conflictedTaskIds={conflictedTaskIds}
             onToggleSession={handleToggleSessionComplete}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
-            onAddTask={handleAddTask}
-            onAddEvent={handleAddEvent}
             onUpdateEvent={handleUpdateEvent}
             onDeleteEvent={handleDeleteEvent}
-            onSavePreferences={handleSavePreferences}
-            onResetData={handleResetData}
             onOpenManager={() => setShowManager(true)}
             onOpenSchedule={() => setCurrentView('schedule')}
           />
         ) : (
           <ScheduleView 
-            tasks={tasks}
             events={events}
             sessions={sessions}
             onBack={() => setCurrentView('dashboard')}
