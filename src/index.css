@@ -1,35 +1,20 @@
 /* Smart Academic & Training Scheduler - Global Style System */
 
 :root {
-  /* HSL Color System */
-  --primary-h: 360;
-  --primary-s: 78%;
-  --primary-l: 62%;
-  --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l)); /* Coral #EA5455 */
-  --primary-glow: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.15);
-  --primary-hover: hsl(var(--primary-h), var(--primary-s), calc(var(--primary-l) - 6%));
-
-  --secondary-h: 20;
-  --secondary-s: 86%;
-  --secondary-l: 59%;
-  --secondary: hsl(var(--secondary-h), var(--secondary-s), var(--secondary-l)); /* Orange #F07B3F */
-  --secondary-glow: hsla(var(--secondary-h), var(--secondary-s), var(--secondary-l), 0.15);
-
-  --accent-h: 44;
-  --accent-s: 100%;
-  --accent-l: 69%;
-  --accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l)); /* Yellow #FFD460 */
-  --accent-glow: hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.15);
-
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #3b82f6;
+  /* Requested Color Palette */
+  --primary: #EA5455;   /* Coral */
+  --secondary: #F07B3F; /* Orange */
+  --accent: #FFD460;    /* Yellow */
+  --bg-slate: #2D4059;  /* Navy Slate */
+  
+  --primary-glow: rgba(234, 84, 85, 0.15);
+  --secondary-glow: rgba(240, 123, 63, 0.15);
+  --accent-glow: rgba(255, 212, 96, 0.15);
 
   /* Theme Colors (Derived from Navy Slate #2D4059) */
-  --bg-app: #0f151e; /* Dark slate */
-  --bg-sidebar: #192330; /* Medium slate */
-  --bg-card: rgba(45, 64, 89, 0.4); /* #2D4059 glass */
+  --bg-app: #0f151e; 
+  --bg-sidebar: #192330; 
+  --bg-card: rgba(45, 64, 89, 0.4); /* Navy Slate glass */
   --bg-card-hover: rgba(45, 64, 89, 0.65);
   --border-color: rgba(255, 255, 255, 0.06);
   --border-color-hover: rgba(255, 255, 255, 0.12);

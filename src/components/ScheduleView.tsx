@@ -233,7 +233,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         <button 
           onClick={onOpenManager}
           style={{ 
-            background: 'linear-gradient(135deg, var(--primary), #a78bfa)', 
+            background: 'linear-gradient(135deg, var(--primary), var(--secondary))', 
             color: '#fff', 
             border: 'none', 
             borderRadius: '16px', 
@@ -245,7 +245,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             gap: '0.75rem',
             width: '100%',
             justifyContent: 'center',
-            boxShadow: 'var(--shadow-glow)'
+            boxShadow: '0 6px 20px rgba(234, 84, 85, 0.3)'
           }}
         >
           <Plus size={24} strokeWidth={3} />
@@ -253,8 +253,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         </button>
       </footer>
 
-      {/* Accent bar at the very bottom */}
-      <div style={{ height: '30px', backgroundColor: 'var(--bg-app)', width: '100%', borderTop: '1px solid var(--border-color)' }}></div>
+      {/* Accent bar at the very bottom using Palette Slate */}
+      <div style={{ height: '30px', backgroundColor: 'var(--bg-slate)', width: '100%', borderTop: '1px solid var(--border-color)' }}></div>
     </div>
   );
 };
