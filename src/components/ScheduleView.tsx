@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { FixedEvent, StudySession } from '../services/db';
+import type { Task, FixedEvent, StudySession } from '../services/db';
 import { 
   ArrowLeft, 
   Plus, 
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 interface ScheduleViewProps {
+  tasks: Task[];
   events: FixedEvent[];
   sessions: StudySession[];
   onBack: () => void;
@@ -17,6 +18,7 @@ interface ScheduleViewProps {
 }
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
+  tasks,
   events,
   sessions,
   onBack,

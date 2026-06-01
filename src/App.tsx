@@ -448,6 +448,7 @@ function App() {
           />
         ) : (
           <ScheduleView 
+            tasks={tasks}
             events={events}
             sessions={sessions}
             onBack={() => setCurrentView('dashboard')}
