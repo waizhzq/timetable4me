@@ -33,6 +33,19 @@ interface Props {
   onOpenSchedule: () => void;
 }
 
+const DurationPill: React.FC<{
+  label: string; value: number; step?: number;
+  onDec: (e: React.MouseEvent) => void;
+  onInc: (e: React.MouseEvent) => void;
+}> = ({ label, value, onDec, onInc, step = 1 }) => (
+  <div style={{ display:'flex', alignItems:'center', gap:'0', backgroundColor:'rgba(255,255,255,0.05)', borderRadius:'20px', border:'1px solid rgba(255,255,255,0.07)', overflow:'hidden' }}>
+    <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.35)', padding:'4px 10px 4px 12px', letterSpacing:'0.06em', textTransform:'uppercase', userSelect:'none' }}>{label}</span>
+    <button onClick={onDec} style={{ background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.07)', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:'4px 9px', fontSize:'1rem', lineHeight:1, display:'flex', alignItems:'center' }}>−</button>
+    <span style={{ fontFamily:"'VT323', monospace", fontSize:'1.05rem', color:'#fff', padding:'0 6px', minWidth:'28px', textAlign:'center', userSelect:'none' }}>{value}{step > 1 ? 'm' : ''}</span>
+    <button onClick={onInc} style={{ background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.07)', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:'4px 9px', fontSize:'1rem', lineHeight:1, display:'flex', alignItems:'center' }}>+</button>
+  </div>
+);
+
 export const Dashboard: React.FC<Props> = ({
   tasks, events, sessions, todos,
   onToggleSession, onUpdateTask, onDeleteTask, onUpdateEvent, onDeleteEvent,
@@ -56,16 +69,23 @@ export const Dashboard: React.FC<Props> = ({
   const [fabOpen, setFabOpen] = useState(false);
 
   // ── Pomodoro ─────────────────────────────────────────────────────────────
+  const [timerType,  setTimerType]  = useState<'pomodoro'|'free'>('pomodoro');
+  const [workMins,   setWorkMins]   = useState(25);
+  const [breakMins,  setBreakMins]  = useState(5);
+  const [freeMins,   setFreeMins]   = useState(30);
   const [pomMode,    setPomMode]    = useState<'work'|'break'>('work');
   const [pomSecs,    setPomSecs]    = useState(WORK_SECS);
   const [pomRunning, setPomRunning] = useState(false);
-  const [pomCount,   setPomCount]   = useState(0); // completed work sessions
-  const pomRef      = useRef<ReturnType<typeof setInterval>|null>(null);
-  const msRef       = useRef<ReturnType<typeof setInterval>|null>(null);
+  const [pomCount,   setPomCount]   = useState(0);
+  const pomRef       = useRef<ReturnType<typeof setInterval>|null>(null);
+  const msRef        = useRef<ReturnType<typeof setInterval>|null>(null);
   const timeTextRef  = useRef<HTMLDivElement>(null);
   const msDisplayRef = useRef<HTMLSpanElement>(null);
   const timerCardRef = useRef<HTMLDivElement>(null);
   const progressRef  = useRef<HTMLDivElement>(null);
+  // Keep a live ref to settings so the tick closure never goes stale
+  const settingsRef  = useRef({ timerType, workMins, breakMins, freeMins, pomMode });
+  settingsRef.current = { timerType, workMins, breakMins, freeMins, pomMode };
 
   // Animate text color whenever run/pause/mode changes
   useEffect(() => {
@@ -82,25 +102,17 @@ export const Dashboard: React.FC<Props> = ({
           if (s <= 1) {
             clearInterval(pomRef.current!);
             setPomRunning(false);
-            const next = pomMode === 'work' ? 'break' : 'work';
-            if (pomMode === 'work') setPomCount(c => c + 1);
-            setPomMode(next);
-            setPomSecs(next === 'work' ? WORK_SECS : BREAK_SECS);
-            // completion: flash white then fade to idle
-            if (timeTextRef.current) {
-              animate(timeTextRef.current, {
-                color: [COLOR_DONE, COLOR_IDLE],
-                scale: [{ to: 1.04, duration: 120 }, { to: 1, duration: 400 }],
-                duration: 800,
-                ease: 'outElastic(1, .5)',
-              });
-            }
-            if (timerCardRef.current) {
-              animate(timerCardRef.current, {
-                backgroundColor: ['rgba(255,255,255,0.04)', 'rgba(9,13,19,1)'],
-                duration: 600,
-                ease: 'outQuad',
-              });
+            const { timerType: tt, workMins: wm, breakMins: bm, freeMins: fm, pomMode: pm } = settingsRef.current;
+            // Completion animations
+            if (timeTextRef.current) animate(timeTextRef.current, { color: [COLOR_DONE, COLOR_IDLE], scale: [{ to: 1.04, duration: 120 }, { to: 1, duration: 400 }], duration: 800, ease: 'outElastic(1, .5)' });
+            if (timerCardRef.current) animate(timerCardRef.current, { backgroundColor: ['rgba(255,255,255,0.04)', 'rgba(9,13,19,1)'], duration: 600, ease: 'outQuad' });
+            if (tt === 'free') {
+              setPomSecs(fm * 60);
+            } else {
+              const next = pm === 'work' ? 'break' : 'work';
+              if (pm === 'work') setPomCount(c => c + 1);
+              setPomMode(next);
+              setPomSecs(next === 'work' ? wm * 60 : bm * 60);
             }
             return 0;
           }
@@ -111,19 +123,15 @@ export const Dashboard: React.FC<Props> = ({
       if (pomRef.current) clearInterval(pomRef.current);
     }
     return () => { if (pomRef.current) clearInterval(pomRef.current); };
-  }, [pomRunning, pomMode]);
+  }, [pomRunning]);
 
   // Animate progress bar
   useEffect(() => {
     if (!progressRef.current) return;
-    const total = pomMode === 'work' ? WORK_SECS : BREAK_SECS;
-    const pct   = ((total - pomSecs) / total) * 100;
-    animate(progressRef.current, {
-      width: `${pct}%`,
-      duration: 950,
-      ease: 'linear',
-    });
-  }, [pomSecs, pomMode]);
+    const total = timerType === 'free' ? freeMins * 60 : pomMode === 'work' ? workMins * 60 : breakMins * 60;
+    const pct   = total > 0 ? ((total - pomSecs) / total) * 100 : 0;
+    animate(progressRef.current, { width: `${pct}%`, duration: 950, ease: 'linear' });
+  }, [pomSecs, pomMode, timerType, workMins, breakMins, freeMins]);
 
   // Millisecond display — direct DOM write, no React re-render
   useEffect(() => {
@@ -142,6 +150,13 @@ export const Dashboard: React.FC<Props> = ({
     return () => { if (msRef.current) clearInterval(msRef.current); };
   }, [pomRunning]);
 
+  // Reset displayed time when user changes duration settings (only while stopped)
+  useEffect(() => {
+    if (pomRunning) return;
+    const newTotal = timerType === 'free' ? freeMins * 60 : pomMode === 'work' ? workMins * 60 : breakMins * 60;
+    setPomSecs(newTotal);
+  }, [timerType, workMins, breakMins, freeMins]);
+
   const togglePom = () => {
     if (!pomRunning && timeTextRef.current) {
       // brief "arm" flash before starting
@@ -159,8 +174,9 @@ export const Dashboard: React.FC<Props> = ({
     e.stopPropagation();
     setPomRunning(false);
     setPomMode('work');
-    setPomSecs(WORK_SECS);
     setPomCount(0);
+    const newTotal = timerType === 'free' ? freeMins * 60 : workMins * 60;
+    setPomSecs(newTotal);
     if (timeTextRef.current) animate(timeTextRef.current, { color: COLOR_IDLE, duration: 300 });
   };
 
@@ -168,18 +184,23 @@ export const Dashboard: React.FC<Props> = ({
     e.stopPropagation();
     setPomRunning(false);
     setPomMode(m);
-    setPomSecs(m === 'work' ? WORK_SECS : BREAK_SECS);
+    setPomSecs(m === 'work' ? workMins * 60 : breakMins * 60);
+  };
+
+  const clampMins = (v: number) => Math.min(99, Math.max(1, v));
+  const adjustMins = (setter: (v: number) => void, current: number, delta: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setter(clampMins(current + delta));
   };
 
   const pomM = String(Math.floor(pomSecs / 60)).padStart(2, '0');
   const pomS = String(pomSecs % 60).padStart(2, '0');
-  const total = pomMode === 'work' ? WORK_SECS : BREAK_SECS;
-  const progressPctTimer = ((total - pomSecs) / total) * 100;
-  const statusLabel = pomRunning
-    ? (pomMode === 'work' ? 'FOCUS' : 'BREAK')
-    : pomSecs === (pomMode === 'work' ? WORK_SECS : BREAK_SECS)
-      ? 'TAP TO START'
-      : 'PAUSED';
+  const currentTotal     = timerType === 'free' ? freeMins * 60 : pomMode === 'work' ? workMins * 60 : breakMins * 60;
+  const progressPctTimer = currentTotal > 0 ? ((currentTotal - pomSecs) / currentTotal) * 100 : 0;
+  const atStart          = pomSecs === currentTotal;
+  const statusLabel      = pomRunning
+    ? (timerType === 'free' ? 'RUNNING' : pomMode === 'work' ? 'FOCUS' : 'BREAK')
+    : atStart ? 'TAP TO START' : 'PAUSED';
 
   // ── Schedule / task data ─────────────────────────────────────────────────
   const todayTimeline = [
@@ -300,32 +321,33 @@ export const Dashboard: React.FC<Props> = ({
           backgroundColor: '#090d13',
           borderRadius: 'var(--border-radius-lg)',
           border: '1px solid rgba(255,255,255,0.05)',
-          padding: '2rem 1.5rem 0',
+          padding: '1.5rem 1.5rem 0',
           cursor: 'pointer',
           userSelect: 'none',
           WebkitUserSelect: 'none',
           position: 'relative',
           overflow: 'hidden',
-          minHeight: '220px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
         }}
       >
-        {/* Top row: mode tabs + session count + reset */}
-        <div style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
-          <div style={{ display:'flex', gap:'0.35rem' }} onClick={e => e.stopPropagation()}>
-            {(['work','break'] as const).map(m => (
-              <button key={m} onClick={e => switchMode(m, e)}
-                style={{ padding:'3px 12px', borderRadius:'20px', border:'none', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', backgroundColor: pomMode===m ? 'rgba(255,255,255,0.1)' : 'transparent', color: pomMode===m ? '#fff' : 'rgba(255,255,255,0.25)', transition:'all 0.2s' }}>
-                {m === 'work' ? 'Focus' : 'Break'}
+        {/* Top row: type toggle + session count + reset */}
+        <div style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }} onClick={e => e.stopPropagation()}>
+          {/* Timer type toggle */}
+          <div style={{ display:'flex', gap:'0', backgroundColor:'rgba(255,255,255,0.05)', borderRadius:'20px', padding:'2px' }}>
+            {(['pomodoro','free'] as const).map(t => (
+              <button key={t} onClick={e => { e.stopPropagation(); setTimerType(t); setPomRunning(false); }}
+                style={{ padding:'3px 12px', borderRadius:'20px', border:'none', fontSize:'0.65rem', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', backgroundColor: timerType===t ? 'rgba(255,255,255,0.12)' : 'transparent', color: timerType===t ? '#fff' : 'rgba(255,255,255,0.3)', transition:'all 0.2s' }}>
+                {t === 'pomodoro' ? 'Pomodoro' : 'Free'}
               </button>
             ))}
           </div>
+
           <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-            {pomCount > 0 && (
-              <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.25)', letterSpacing:'0.05em' }}>
-                {pomCount} {pomCount===1?'session':'sessions'}
+            {timerType === 'pomodoro' && pomCount > 0 && (
+              <span style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.25)', letterSpacing:'0.04em' }}>
+                {pomCount} {pomCount===1?'done':'done'}
               </span>
             )}
             <button onClick={resetPom} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.2)', padding:'4px', display:'flex', transition:'color 0.2s' }}
@@ -336,48 +358,52 @@ export const Dashboard: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* THE TIME — pixelated VT323 font, anime.js controls color */}
+        {/* Pomodoro-only: work/break mode tabs */}
+        {timerType === 'pomodoro' && (
+          <div style={{ display:'flex', gap:'0.3rem', marginBottom:'0.5rem' }} onClick={e => e.stopPropagation()}>
+            {(['work','break'] as const).map(m => (
+              <button key={m} onClick={e => switchMode(m, e)}
+                style={{ padding:'2px 10px', borderRadius:'20px', border:'none', fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', backgroundColor: pomMode===m ? 'rgba(255,255,255,0.1)' : 'transparent', color: pomMode===m ? '#fff' : 'rgba(255,255,255,0.2)', transition:'all 0.2s' }}>
+                {m === 'work' ? 'Focus' : 'Break'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* THE TIME */}
         <div
           ref={timeTextRef}
-          style={{
-            fontFamily: "'VT323', monospace",
-            fontSize: 'clamp(5rem, 20vw, 9.5rem)',
-            fontWeight: 400,
-            letterSpacing: '0.02em',
-            lineHeight: 1,
-            color: COLOR_IDLE,
-            transition: 'none',
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: 0,
-          }}
+          style={{ fontFamily:"'VT323', monospace", fontSize:'clamp(5rem, 20vw, 9.5rem)', fontWeight:400, letterSpacing:'0.02em', lineHeight:1, color:COLOR_IDLE, transition:'none', display:'flex', alignItems:'baseline' }}
         >
           <span>{pomM}:{pomS}</span>
-          <span
-            ref={msDisplayRef}
-            style={{ fontSize: '0.45em', opacity: 0.8, letterSpacing: 0, marginLeft: '0.08em' }}
-          >
-            .00
-          </span>
+          <span ref={msDisplayRef} style={{ fontSize:'0.45em', opacity:0.8, letterSpacing:0, marginLeft:'0.08em' }}>.00</span>
         </div>
 
         {/* Status label */}
-        <div style={{ marginTop:'1rem', marginBottom:'1.5rem', fontSize:'0.65rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(255,255,255,0.2)', fontFamily:'var(--font-mono)', transition:'opacity 0.3s' }}>
+        <div style={{ marginTop:'0.75rem', fontSize:'0.62rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(255,255,255,0.2)', fontFamily:'var(--font-mono)' }}>
           {statusLabel}
         </div>
 
-        {/* Progress bar — bottom edge of card */}
+        {/* Duration controls — shown when not running */}
+        {!pomRunning && (
+          <div style={{ display:'flex', gap:'0.6rem', marginTop:'1rem', marginBottom:'0.25rem', flexWrap:'wrap', justifyContent:'center' }} onClick={e => e.stopPropagation()}>
+            {timerType === 'pomodoro' ? (
+              <>
+                <DurationPill label="Work" value={workMins} onDec={e => adjustMins(setWorkMins, workMins, -1, e)} onInc={e => adjustMins(setWorkMins, workMins, 1, e)} />
+                <DurationPill label="Break" value={breakMins} onDec={e => adjustMins(setBreakMins, breakMins, -1, e)} onInc={e => adjustMins(setBreakMins, breakMins, 1, e)} />
+              </>
+            ) : (
+              <DurationPill label="Duration" value={freeMins} onDec={e => adjustMins(setFreeMins, freeMins, -5, e)} onInc={e => adjustMins(setFreeMins, freeMins, 5, e)} step={5} />
+            )}
+          </div>
+        )}
+
+        {/* Spacer when running */}
+        {pomRunning && <div style={{ height:'1.25rem' }} />}
+
+        {/* Progress bar */}
         <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'3px', backgroundColor:'rgba(255,255,255,0.04)' }}>
-          <div
-            ref={progressRef}
-            style={{
-              height:'100%',
-              width:`${progressPctTimer}%`,
-              backgroundColor: pomMode==='work' ? COLOR_WORK : COLOR_BREAK,
-              opacity: 0.7,
-              borderRadius:'0 2px 2px 0',
-            }}
-          />
+          <div ref={progressRef} style={{ height:'100%', width:`${progressPctTimer}%`, backgroundColor: timerType==='free' ? COLOR_BREAK : pomMode==='work' ? COLOR_WORK : COLOR_BREAK, opacity:0.7, borderRadius:'0 2px 2px 0' }}/>
         </div>
       </div>
 
