@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
 import type { Task, FixedEvent, StudySession } from '../services/db';
-import {
-  ArrowLeft,
-  Plus,
-  Trash2,
-  BookOpen,
-  Download
-} from 'lucide-react';
+import { ArrowLeft, Download, Plus, CheckCircle2, Circle, Repeat2 } from 'lucide-react';
 import { exportWeekAsPdf } from '../utils/exportPdf';
 
 interface ScheduleViewProps {
@@ -19,268 +13,266 @@ interface ScheduleViewProps {
   onDeleteEvent: (id: string) => Promise<void>;
 }
 
+const SHORT_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const FULL_DAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function durationLabel(start: string, end: string) {
+  const mins = (new Date(end).getTime() - new Date(start).getTime()) / 60000;
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
-  tasks,
-  events,
-  sessions,
-  onBack,
-  onOpenManager,
-  onDeleteTask,
-  onDeleteEvent,
+  tasks, events, sessions,
+  onBack, onOpenManager, onDeleteTask, onDeleteEvent,
 }) => {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const fullDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  
-  const now = new Date();
-  const [selectedDayIdx, setSelectedDayIdx] = useState(now.getDay());
+  const today     = new Date();
+  const todayIdx  = today.getDay();
+  const [selDay, setSelDay] = useState(todayIdx);
 
-  const selectedDayName = fullDays[selectedDayIdx];
-
-  // Filter events for the selected day
-  const dayEvents = events.filter(e => e.day === selectedDayName);
-  
-  // Filter tasks that have a specific time on the selected day
-  // (Assuming tasks with startTime/endTime are fixed for a day)
-  // We'll also include study sessions for this day
-  const daySessions = sessions.filter(s => {
-    const sDate = new Date(s.start);
-    return sDate.getDay() === selectedDayIdx;
+  // Week dates (Sun–Sat of this week)
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - todayIdx + i);
+    return d;
   });
+  const selDate     = weekDates[selDay];
+  const selDateStr  = selDate.toISOString().split('T')[0];
+  const selDayName  = FULL_DAYS[selDay];
 
-  const handleDelete = async (type: 'event' | 'session', id: string) => {
-    if (window.confirm(`Are you sure you want to delete this ${type}?`)) {
-      if (type === 'event') {
-        await onDeleteEvent(id);
-      } else {
-        // For sessions, we might want to delete the task or just the session
-        // The user said "add or delete the task"
-        // In the context of the image, they are likely talking about the items shown
-        const session = daySessions.find(s => s.id === id);
-        if (session) {
-          await onDeleteTask(session.taskId);
-        }
-      }
+  // Merge events + sessions for selected day, sorted by start time
+  const dayItems = [
+    ...events
+      .filter(e => e.recurring ? e.day === selDayName : e.date === selDateStr)
+      .map(e => ({
+        key:      e.id,
+        kind:     'event' as const,
+        id:       e.id,
+        taskId:   null as string | null,
+        title:    e.title,
+        color:    e.color,
+        timeFrom: e.startTime,
+        timeTo:   e.endTime,
+        sortKey:  e.startTime,
+        category: e.customType || e.type,
+        recurring: e.recurring,
+        done:     false,
+      })),
+    ...sessions
+      .filter(s => s.start.startsWith(selDateStr))
+      .map(s => {
+        const task = tasks.find(t => t.id === s.taskId);
+        return {
+          key:      s.id,
+          kind:     'session' as const,
+          id:       s.id,
+          taskId:   s.taskId,
+          title:    s.taskTitle,
+          color:    task?.color || '#EA5455',
+          timeFrom: fmtTime(s.start),
+          timeTo:   fmtTime(s.end),
+          sortKey:  new Date(s.start).toTimeString().slice(0, 5),
+          category: task?.category || 'study',
+          recurring: false,
+          done:     s.completed,
+          durationStr: durationLabel(s.start, s.end),
+          start:    s.start,
+          end:      s.end,
+        };
+      }),
+  ].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+  const handleDelete = async (item: typeof dayItems[0]) => {
+    const label = item.kind === 'event' ? 'event' : 'task';
+    if (!window.confirm(`Delete this ${label}?`)) return;
+    if (item.kind === 'event') {
+      await onDeleteEvent(item.id);
+    } else if (item.taskId) {
+      await onDeleteTask(item.taskId);
     }
   };
 
+  const headerDate = selDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
   return (
-    <div className="schedule-view" style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: '100vh', 
-      backgroundColor: 'var(--bg-app)', 
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      backgroundColor: 'var(--bg-app)',
+      display: 'flex', flexDirection: 'column',
       color: 'var(--text-primary)',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 1000,
-      overflow: 'hidden'
     }}>
-      {/* Header */}
-      <header style={{ 
-        backgroundColor: 'var(--primary)', 
-        padding: '1.5rem 1rem', 
-        display: 'flex', 
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <header style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0.875rem 1rem',
+        borderBottom: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-app)',
+        flexShrink: 0,
       }}>
-        <button onClick={onBack} style={{
-          position: 'absolute',
-          left: '1rem',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: '#fff'
-        }}>
-          <ArrowLeft size={24} />
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: '4px' }}>
+          <ArrowLeft size={22} />
         </button>
-        <h1 style={{
-          fontSize: '1.25rem',
-          margin: 0,
-          color: '#fff',
-          background: 'none',
-          WebkitTextFillColor: 'initial',
-          fontWeight: 700
-        }}>Schedule</h1>
-        <button
-          onClick={() => exportWeekAsPdf(events, sessions, tasks)}
-          title="Export week as PDF"
-          style={{
-            position: 'absolute',
-            right: '1rem',
-            background: 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.3)',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            padding: '6px 12px',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-          }}
-        >
-          <Download size={15} />
+
+        <span style={{ fontWeight: 600, fontSize: '0.95rem', color: '#fff' }}>{headerDate}</span>
+
+        <button onClick={() => exportWeekAsPdf(events, sessions, tasks)}
+          className="btn btn-secondary"
+          style={{ padding: '5px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <Download size={13} />
           PDF
         </button>
       </header>
 
-      {/* Day Selector */}
-      <div style={{ 
-        padding: '1rem', 
-        display: 'flex', 
-        gap: '0.5rem', 
-        overflowX: 'auto',
-        backgroundColor: 'var(--bg-sidebar)',
-        borderBottom: '1px solid var(--border-color)'
+      {/* ── Week strip ─────────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', gap: '0', borderBottom: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-sidebar)', flexShrink: 0, overflowX: 'auto',
       }} className="no-scrollbar">
-        {days.map((day, idx) => (
-          <button 
-            key={day}
-            onClick={() => setSelectedDayIdx(idx)}
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '12px',
-              border: 'none',
-              backgroundColor: selectedDayIdx === idx ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-              color: selectedDayIdx === idx ? '#fff' : 'var(--text-secondary)',
-              fontWeight: 700,
-              minWidth: '65px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: selectedDayIdx === idx ? 'var(--shadow-glow)' : 'none'
-            }}
-          >
-            {day}
-          </button>
-        ))}
+        {weekDates.map((d, i) => {
+          const isToday = i === todayIdx;
+          const isSel   = i === selDay;
+          return (
+            <button key={i} onClick={() => setSelDay(i)}
+              style={{
+                flex: '1 0 0', minWidth: '44px', padding: '0.75rem 0.25rem',
+                background: 'none', border: 'none', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                borderBottom: isSel ? '2px solid var(--primary)' : '2px solid transparent',
+                transition: 'border-color 0.15s',
+              }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: isSel ? '#fff' : 'var(--text-muted)' }}>
+                {SHORT_DAYS[i]}
+              </span>
+              <span style={{
+                width: '28px', height: '28px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '0.85rem', fontWeight: isSel ? 700 : 400,
+                backgroundColor: isToday ? 'var(--primary)' : 'transparent',
+                color: isToday ? '#fff' : isSel ? '#fff' : 'var(--text-secondary)',
+              }}>
+                {d.getDate()}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: 'var(--bg-app)' }}>
-        {dayEvents.length === 0 && daySessions.length === 0 ? (
+      {/* ── Timeline ───────────────────────────────────────────────────── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0' }}>
+        {dayItems.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-muted)' }}>
-            <BookOpen size={64} style={{ marginBottom: '1.5rem', opacity: 0.2 }} />
-            <p style={{ fontSize: '1.1rem' }}>No classes or tasks scheduled for {selectedDayName}.</p>
+            <p style={{ fontSize: '0.9rem' }}>Nothing on {selDayName}.</p>
           </div>
         ) : (
-          <>
-            {dayEvents.map(event => (
-              <div key={event.id} className="schedule-card" style={{
-                backgroundColor: 'var(--bg-sidebar)',
-                borderRadius: '16px',
-                padding: '1.5rem',
-                boxShadow: 'var(--shadow-md)',
-                border: '1px solid var(--border-color)',
-                position: 'relative',
-                borderLeft: `4px solid ${event.color || 'var(--secondary)'}`
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '0.02em' }}>{event.title.toUpperCase()}</h3>
-                  <button 
-                    onClick={() => handleDelete('event', event.id)}
-                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.7 }}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-                
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 500 }}>
-                  {event.notes ? event.notes.split('\n')[0] : (event.customType || event.type)}
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    {/* Simplified metadata */}
-                    <span>{event.notes && event.notes.includes('\n') ? event.notes.split('\n')[1] : (event.customType || event.type)}</span>
-                  </div>
-                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
-                    {event.startTime} - {event.endTime}
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {dayItems.map((item, idx) => {
+              const prevItem  = idx > 0 ? dayItems[idx - 1] : null;
+              const showGap   = prevItem && item.sortKey > prevItem.sortKey;
+              const isDone    = item.done;
 
-            {daySessions.map(session => {
-              const task = tasks.find(t => t.id === session.taskId);
-              const taskColor = task?.color || 'var(--primary)';
               return (
-                <div key={session.id} className="schedule-card" style={{
-                  backgroundColor: 'var(--bg-sidebar)',
-                  borderRadius: '16px',
-                  padding: '1.5rem',
-                  boxShadow: 'var(--shadow-md)',
-                  border: '1px solid var(--border-color)',
-                  borderLeft: `4px solid ${taskColor}`,
-                  position: 'relative'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '0.02em' }}>{session.taskTitle.toUpperCase()}</h3>
-                    <button 
-                      onClick={() => handleDelete('session', session.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.7 }}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                  
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 500 }}>
-                    Study Session • {task?.category || 'General'}
-                  </div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      Scheduled Productivity
+                <React.Fragment key={item.key}>
+                  {/* Gap indicator between blocks with a time gap */}
+                  {showGap && (
+                    <div style={{ height: '1px', margin: '0 1rem', backgroundColor: 'var(--border-color)', opacity: 0.5 }} />
+                  )}
+
+                  <div style={{
+                    display: 'flex', alignItems: 'stretch', gap: '0',
+                    padding: '0 1rem',
+                    opacity: isDone ? 0.5 : 1,
+                    transition: 'opacity 0.2s',
+                  }}>
+                    {/* Time column */}
+                    <div style={{ width: '52px', flexShrink: 0, paddingTop: '1rem', paddingRight: '0.75rem' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', lineHeight: 1 }}>
+                        {item.timeFrom}
+                      </span>
                     </div>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
-                      {new Date(session.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} - {new Date(session.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+
+                    {/* Color stripe */}
+                    <div style={{ width: '3px', flexShrink: 0, backgroundColor: item.color, borderRadius: '2px', margin: '0.75rem 0', opacity: 0.85 }} />
+
+                    {/* Content */}
+                    <div style={{ flex: 1, padding: '0.875rem 0 0.875rem 0.875rem', minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
+                            {/* Done indicator for sessions */}
+                            {item.kind === 'session' && (
+                              isDone
+                                ? <CheckCircle2 size={14} color="#34d399" style={{ flexShrink: 0 }} />
+                                : <Circle size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                            )}
+                            <span style={{
+                              fontSize: '0.92rem', fontWeight: 600, color: isDone ? 'var(--text-muted)' : '#fff',
+                              textDecoration: isDone ? 'line-through' : 'none',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {item.title}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                              {item.timeFrom}–{item.timeTo}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', opacity: 0.6 }}>·</span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                              {item.category}
+                            </span>
+                            {item.recurring && (
+                              <>
+                                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', opacity: 0.6 }}>·</span>
+                                <Repeat2 size={11} color="var(--text-muted)" />
+                              </>
+                            )}
+                            {'durationStr' in item && (
+                              <>
+                                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', opacity: 0.6 }}>·</span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{item.durationStr}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Delete */}
+                        <button onClick={() => handleDelete(item)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px', flexShrink: 0, opacity: 0.4, display: 'flex' }}
+                          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                          onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}>
+                          ×
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </React.Fragment>
               );
             })}
-          </>
+          </div>
         )}
       </div>
 
-      {/* Footer / Add Button */}
-      <footer style={{ 
-        padding: '1.5rem', 
-        backgroundColor: 'var(--bg-sidebar)', 
+      {/* ── Footer ─────────────────────────────────────────────────────── */}
+      <div style={{
+        padding: '0.875rem 1rem',
+        paddingBottom: 'calc(0.875rem + env(safe-area-inset-bottom))',
         borderTop: '1px solid var(--border-color)',
-        display: 'flex',
-        justifyContent: 'center'
+        backgroundColor: 'var(--bg-sidebar)',
+        flexShrink: 0,
       }}>
-        <button 
-          onClick={onOpenManager}
-          style={{ 
-            background: 'linear-gradient(135deg, var(--primary), var(--secondary))', 
-            color: '#fff', 
-            border: 'none', 
-            borderRadius: '16px', 
-            padding: '1.1rem 2rem', 
-            fontWeight: 800,
-            fontSize: '1.1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            width: '100%',
-            justifyContent: 'center',
-            boxShadow: '0 6px 20px rgba(234, 84, 85, 0.3)'
-          }}
-        >
-          <Plus size={24} strokeWidth={3} />
-          ADD NEW TASK / CLASS
+        <button onClick={onOpenManager} className="btn btn-primary"
+          style={{ width: '100%', padding: '0.75rem', fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+          <Plus size={16} />
+          Add task or class
         </button>
-      </footer>
-
-      {/* Accent bar at the very bottom using Palette Slate */}
-      <div style={{ height: '30px', backgroundColor: 'var(--bg-slate)', width: '100%', borderTop: '1px solid var(--border-color)' }}></div>
+      </div>
     </div>
   );
 };
