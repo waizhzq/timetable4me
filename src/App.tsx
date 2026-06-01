@@ -475,6 +475,12 @@ function App() {
             onClose={() => { setShowManager(false); setEditingItem(null); }}
           />
         )}
+        <footer style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.75rem', borderTop: '1px solid var(--border)' }}>
+          Built by{' '}
+          <a href="https://github.com/amrlhakimii" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>amrlhakimii</a>
+          {' & '}
+          <a href="https://waizhzq.my" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>waizhzq</a>
+        </footer>
       </main>
     </div>
   );
