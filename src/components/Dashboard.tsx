@@ -1,91 +1,64 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Task, FixedEvent, StudySession } from '../services/db';
+import { animate } from 'animejs';
+import type { Task, FixedEvent, StudySession, Todo } from '../services/db';
 import { calculatePriorityScore } from '../services/scheduler';
 import {
-  Calendar,
-  Clock,
-  CheckCircle2,
-  Bookmark,
-  Star,
-  FileText,
-  CheckSquare,
-  Square,
-  AlertCircle,
-  ArrowRight,
-  ListTodo,
-  Trash2,
-  BarChart2,
-  Timer,
-  Play,
-  Pause,
-  RotateCcw,
+  Clock, CheckCircle2, Bookmark, Star, FileText,
+  CheckSquare, Square, AlertCircle, ArrowRight,
+  ListTodo, Trash2, BarChart2, Timer, Play, Pause,
+  RotateCcw, Plus, CalendarDays, X,
 } from 'lucide-react';
 
-interface TodoItem { id: string; text: string; done: boolean; }
+const WORK_SECS = 25 * 60;
+const BREAK_SECS = 5 * 60;
+const DAY_START = 7;   // 07:00
+const DAY_END   = 23;  // 23:00
 
-interface DashboardProps {
-  tasks: Task[];
-  events: FixedEvent[];
-  sessions: StudySession[];
-  onToggleSession: (sessionId: string, completed: boolean, hours: number, taskId: string) => void;
-  onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
-  onDeleteTask: (taskId: string) => Promise<void>;
-  onUpdateEvent: (eventId: string, updates: Partial<FixedEvent>) => Promise<void>;
-  onDeleteEvent: (eventId: string) => Promise<void>;
+interface Props {
+  tasks: Task[]; events: FixedEvent[]; sessions: StudySession[]; todos: Todo[];
+  onToggleSession: (id: string, done: boolean, hrs: number, taskId: string) => void;
+  onUpdateTask: (id: string, u: Partial<Task>) => Promise<void>;
+  onDeleteTask: (id: string) => Promise<void>;
+  onUpdateEvent: (id: string, u: Partial<FixedEvent>) => Promise<void>;
+  onDeleteEvent: (id: string) => Promise<void>;
+  onAddTodo: (text: string) => Promise<void>;
+  onToggleTodo: (id: string, done: boolean) => Promise<void>;
+  onDeleteTodo: (id: string) => Promise<void>;
+  onClearDoneTodos: () => Promise<void>;
   onOpenManager: () => void;
   onOpenSchedule: () => void;
 }
 
-const POMODORO_WORK = 25 * 60;
-const POMODORO_BREAK = 5 * 60;
-
-export const Dashboard: React.FC<DashboardProps> = ({
-  tasks, events, sessions,
+export const Dashboard: React.FC<Props> = ({
+  tasks, events, sessions, todos,
   onToggleSession, onUpdateTask, onDeleteTask, onUpdateEvent, onDeleteEvent,
+  onAddTodo, onToggleTodo, onDeleteTodo, onClearDoneTodos,
   onOpenManager, onOpenSchedule,
 }) => {
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-  const todayDayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
+  const todayStr  = now.toISOString().split('T')[0];
+  const todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
 
-  // ── Inspector state ────────────────────────────────────────────────────────
-  const [selectedBlock, setSelectedBlock] = useState<{
-    type: 'study' | 'fixed'; id: string; dbId: string; title: string;
-    category: string; start: string; end: string; completed: boolean;
-  } | null>(null);
-  const [newSubtaskText, setNewSubtaskText] = useState('');
+  // ── Inspector ──────────────────────────────────────────────────────────────
+  const [sel, setSel] = useState<{ type:'study'|'fixed'; id:string; dbId:string; title:string; category:string; start:string; end:string; completed:boolean } | null>(null);
+  const [subText, setSubText] = useState('');
   const [noteText, setNoteText] = useState('');
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editingNote, setEditingNote] = useState(false);
 
-  // ── Quick To-Do ────────────────────────────────────────────────────────────
-  const todoKey = `t4m_todos_${todayStr}`;
-  const [todos, setTodos] = useState<TodoItem[]>(() => {
-    try { return JSON.parse(localStorage.getItem(todoKey) || '[]'); } catch { return []; }
-  });
+  // ── To-Do ─────────────────────────────────────────────────────────────────
   const [newTodo, setNewTodo] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem(todoKey, JSON.stringify(todos));
-  }, [todos, todoKey]);
+  // ── FAB ───────────────────────────────────────────────────────────────────
+  const [fabOpen, setFabOpen] = useState(false);
 
-  const addTodo = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTodo.trim()) return;
-    setTodos(prev => [...prev, { id: `td-${Date.now()}`, text: newTodo.trim(), done: false }]);
-    setNewTodo('');
-  };
-  const toggleTodo = (id: string) =>
-    setTodos(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
-  const deleteTodo = (id: string) =>
-    setTodos(prev => prev.filter(t => t.id !== id));
-  const clearDone = () =>
-    setTodos(prev => prev.filter(t => !t.done));
-
-  // ── Pomodoro timer ─────────────────────────────────────────────────────────
-  const [pomMode, setPomMode] = useState<'work' | 'break'>('work');
-  const [pomSecs, setPomSecs] = useState(POMODORO_WORK);
+  // ── Pomodoro ───────────────────────────────────────────────────────────────
+  const [pomMode, setPomMode] = useState<'work'|'break'>('work');
+  const [pomSecs, setPomSecs] = useState(WORK_SECS);
   const [pomRunning, setPomRunning] = useState(false);
-  const pomRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pomRef = useRef<ReturnType<typeof setInterval>|null>(null);
+  const ringRef = useRef<SVGCircleElement>(null);
+  const R = 44;
+  const CIRC = 2 * Math.PI * R;
 
   useEffect(() => {
     if (pomRunning) {
@@ -96,7 +69,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
             setPomRunning(false);
             const next = pomMode === 'work' ? 'break' : 'work';
             setPomMode(next);
-            setPomSecs(next === 'work' ? POMODORO_WORK : POMODORO_BREAK);
+            const nextSecs = next === 'work' ? WORK_SECS : BREAK_SECS;
+            setPomSecs(nextSecs);
+            // completion flash with anime.js
+            if (ringRef.current) {
+              animate(ringRef.current, { scale: [1, 1.12, 1], duration: 600, ease: 'outElastic(1, .6)' });
+            }
             return 0;
           }
           return s - 1;
@@ -108,229 +86,266 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return () => { if (pomRef.current) clearInterval(pomRef.current); };
   }, [pomRunning, pomMode]);
 
-  const resetPomodoro = () => {
-    setPomRunning(false);
-    setPomMode('work');
-    setPomSecs(POMODORO_WORK);
-  };
+  // animate ring whenever secs change
+  useEffect(() => {
+    if (!ringRef.current) return;
+    const total = pomMode === 'work' ? WORK_SECS : BREAK_SECS;
+    const offset = CIRC * (pomSecs / total);
+    animate(ringRef.current, { strokeDashoffset: offset, duration: 900, ease: 'outCubic' });
+  }, [pomSecs, pomMode]);
 
-  const pomMins = String(Math.floor(pomSecs / 60)).padStart(2, '0');
-  const pomSecStr = String(pomSecs % 60).padStart(2, '0');
-  const pomPct = pomMode === 'work'
-    ? ((POMODORO_WORK - pomSecs) / POMODORO_WORK) * 100
-    : ((POMODORO_BREAK - pomSecs) / POMODORO_BREAK) * 100;
+  const resetPom = () => { setPomRunning(false); setPomMode('work'); setPomSecs(WORK_SECS); };
+  const pomM = String(Math.floor(pomSecs / 60)).padStart(2,'0');
+  const pomS = String(pomSecs % 60).padStart(2,'0');
 
-  // ── Derived schedule data ──────────────────────────────────────────────────
-  const activeTasks = tasks
-    .filter(t => t.status !== 'completed' && t.completedHours < t.estimatedHours)
-    .map(t => ({ ...t, score: calculatePriorityScore(t, now), remainingHours: Math.max(0, t.estimatedHours - t.completedHours) }))
-    .sort((a, b) => b.score - a.score);
-
-  const upcomingDeadlines = [...activeTasks].filter(t => t.hasDeadline)
-    .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime());
-
+  // ── Derived data ───────────────────────────────────────────────────────────
   const todayTimeline = [
-    ...events.filter(e => e.recurring ? e.day === todayDayName : e.date === todayStr).map(e => ({
+    ...events.filter(e => e.recurring ? e.day === todayName : e.date === todayStr).map(e => ({
       id: e.id, dbId: e.id, title: e.title, type: 'fixed' as const, color: e.color,
       category: e.type, start: new Date(`${todayStr}T${e.startTime}`).toISOString(),
       end: new Date(`${todayStr}T${e.endTime}`).toISOString(), completed: false,
     })),
     ...sessions.filter(s => s.start.startsWith(todayStr)).map(s => {
-      const task = tasks.find(t => t.id === s.taskId);
+      const t = tasks.find(t => t.id === s.taskId);
       return { id: s.id, dbId: s.taskId, title: s.taskTitle, type: 'study' as const,
-        color: task?.color || '#FF0052', category: task?.category || 'Task',
+        color: t?.color || '#EA5455', category: t?.category || 'task',
         start: s.start, end: s.end, completed: s.completed };
     }),
   ].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
-  const todayStudySessions = todayTimeline.filter(i => i.type === 'study');
-  const completedToday = todayStudySessions.filter(i => i.completed).length;
-  const totalToday = todayStudySessions.length;
-  const progressPct = totalToday > 0 ? (completedToday / totalToday) * 100 : 0;
+  const todaySessions  = todayTimeline.filter(i => i.type === 'study');
+  const doneSessions   = todaySessions.filter(i => i.completed).length;
+  const totalSessions  = todaySessions.length;
+  const progressPct    = totalSessions > 0 ? (doneSessions / totalSessions) * 100 : 0;
 
   const nextItem = todayTimeline.find(i => new Date(i.start) > now && !i.completed);
   const nextMins = nextItem ? Math.ceil((new Date(nextItem.start).getTime() - now.getTime()) / 60000) : null;
   const nextLabel = nextItem
-    ? nextMins! <= 0 ? 'Starting now' : nextMins! < 60 ? `in ${nextMins}m` : `in ${Math.round(nextMins! / 60)}h`
-    : totalToday > 0 ? 'All done' : '—';
+    ? (nextMins! <= 0 ? 'Now' : nextMins! < 60 ? `${nextMins}m` : `${Math.round(nextMins!/60)}h`)
+    : totalSessions > 0 ? 'Done' : '—';
 
-  const overdueTasks = tasks.filter(t => t.status !== 'completed' && t.hasDeadline && t.deadline && t.deadline < todayStr);
+  const overdue = tasks.filter(t => t.status !== 'completed' && t.hasDeadline && t.deadline && t.deadline < todayStr);
 
-  // ── Weekly stats ───────────────────────────────────────────────────────────
+  const activeTasks = tasks
+    .filter(t => t.status !== 'completed' && t.completedHours < t.estimatedHours)
+    .map(t => ({ ...t, score: calculatePriorityScore(t, now) }))
+    .sort((a, b) => b.score - a.score);
+
+  const upcomingDeadlines = [...activeTasks].filter(t => t.hasDeadline)
+    .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime());
+
+  // Weekly stats
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - now.getDay());
-  weekStart.setHours(0, 0, 0, 0);
-
-  const weekSessions = sessions.filter(s => new Date(s.start) >= weekStart);
-  const weekDone = weekSessions.filter(s => s.completed);
-  const weekHours = weekDone.reduce((sum, s) =>
-    sum + (new Date(s.end).getTime() - new Date(s.start).getTime()) / 3600000, 0);
-  const weekRate = weekSessions.length > 0 ? Math.round((weekDone.length / weekSessions.length) * 100) : 0;
+  weekStart.setHours(0,0,0,0);
+  const weekSess = sessions.filter(s => new Date(s.start) >= weekStart);
+  const weekDone = weekSess.filter(s => s.completed);
+  const weekHrs  = weekDone.reduce((s, x) => s + (new Date(x.end).getTime() - new Date(x.start).getTime()) / 3600000, 0);
+  const weekRate = weekSess.length > 0 ? Math.round((weekDone.length / weekSess.length) * 100) : 0;
   const weekTasksDone = tasks.filter(t => t.status === 'completed').length;
 
-  // ── Inspector derived ──────────────────────────────────────────────────────
-  let inspectorDetails: any = null;
-  if (selectedBlock) {
-    if (selectedBlock.type === 'fixed') {
-      const ev = events.find(e => e.id === selectedBlock.dbId);
-      if (ev) inspectorDetails = {
-        title: ev.title, type: 'fixed', category: ev.type,
-        timeRange: `${ev.recurring ? ev.day : formatDateDDMMYY(ev.date)} • ${ev.startTime} - ${ev.endTime}`,
-        notes: ev.notes || 'No notes added.', subtasks: [], color: ev.color,
-      };
+  // Inspector details
+  let insp: any = null;
+  if (sel) {
+    if (sel.type === 'fixed') {
+      const ev = events.find(e => e.id === sel.dbId);
+      if (ev) insp = { title: ev.title, category: ev.type, timeRange: `${ev.recurring ? ev.day : fmtDate(ev.date)} • ${ev.startTime}–${ev.endTime}`, notes: ev.notes || '', subtasks: [], color: ev.color, priority: null };
     } else {
-      const sess = sessions.find(s => s.id === selectedBlock.id);
-      const task = tasks.find(t => t.id === selectedBlock.dbId);
-      if (sess && task) {
-        const s = new Date(sess.start), e = new Date(sess.end);
-        const opts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
-        inspectorDetails = {
-          title: task.title, type: 'study', category: task.category,
-          timeRange: `${s.toLocaleDateString([], { month: 'short', day: 'numeric' })} • ${s.toLocaleTimeString([], opts)} - ${e.toLocaleTimeString([], opts)}`,
-          priority: task.priority, deadline: task.hasDeadline ? formatDateDDMMYY(task.deadline) : 'No Deadline',
-          notes: task.notes || 'No notes added.', subtasks: task.subtasks || [], color: task.color,
-        };
+      const s = sessions.find(s => s.id === sel.id);
+      const t = tasks.find(t => t.id === sel.dbId);
+      if (s && t) {
+        const a = new Date(s.start), b = new Date(s.end);
+        const ot: Intl.DateTimeFormatOptions = { hour:'2-digit', minute:'2-digit', hour12: false };
+        insp = { title: t.title, category: t.category, timeRange: `${a.toLocaleDateString([],{month:'short',day:'numeric'})} • ${a.toLocaleTimeString([],ot)}–${b.toLocaleTimeString([],ot)}`, notes: t.notes || '', subtasks: t.subtasks || [], color: t.color, priority: t.priority };
       }
     }
   }
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-  function formatDateDDMMYY(dateStr?: string) {
-    if (!dateStr) return 'No Date';
-    const [y, m, d] = dateStr.split('-');
-    return `${d}/${m}/${y.slice(-2)}`;
+  // Helpers
+  function fmtDate(d?: string) {
+    if (!d) return '?';
+    const [y,m,dd] = d.split('-');
+    return `${dd}/${m}/${y.slice(-2)}`;
   }
-  const getPriorityEmoji = (p: string) => p === 'high' ? '🔥' : p === 'medium' ? '💓' : '🛌';
-  const getCategoryEmoji = (cat: string) => {
-    switch (cat) {
-      case 'assignment': return '📝'; case 'quiz': return '❓';
-      case 'program': return '💻'; case 'date': return '📅';
-      case 'training': return '💪'; default: return '•';
-    }
-  };
+  function prioEmoji(p: string) { return p === 'high' ? '🔥' : p === 'medium' ? '💓' : '🛌'; }
+  function catEmoji(c: string) {
+    switch(c){ case 'assignment': return '📝'; case 'quiz': return '❓'; case 'program': return '💻'; case 'date': return '📅'; case 'training': return '💪'; default: return '•'; }
+  }
+  function fmtRange(a: string, b: string) {
+    const f = (d: Date) => d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', hour12: false });
+    return `${f(new Date(a))} – ${f(new Date(b))}`;
+  }
 
-  const handleToggleSubtask = async (subtaskId: string) => {
-    if (!selectedBlock || selectedBlock.type !== 'study') return;
-    const t = tasks.find(t => t.id === selectedBlock.dbId);
+  // Mini schedule helpers
+  function toMinutes(iso: string) {
+    const d = new Date(iso);
+    return d.getHours() * 60 + d.getMinutes();
+  }
+  const DAY_MINS = (DAY_END - DAY_START) * 60;
+  function pct(mins: number) {
+    return Math.min(100, Math.max(0, ((mins - DAY_START * 60) / DAY_MINS) * 100));
+  }
+  const nowPct = pct(now.getHours() * 60 + now.getMinutes());
+
+  // Sub-task / note handlers
+  const toggleSub = async (subId: string) => {
+    if (!sel || sel.type !== 'study') return;
+    const t = tasks.find(t => t.id === sel.dbId);
     if (!t) return;
-    await onUpdateTask(t.id, { subtasks: (t.subtasks || []).map(st => st.id === subtaskId ? { ...st, completed: !st.completed } : st) });
+    await onUpdateTask(t.id, { subtasks: (t.subtasks||[]).map(s => s.id===subId ? {...s,completed:!s.completed} : s) });
   };
-  const handleAddSubtask = async (e: React.FormEvent) => {
+  const addSub = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSubtaskText.trim() || !selectedBlock || selectedBlock.type !== 'study') return;
-    const t = tasks.find(t => t.id === selectedBlock.dbId);
+    if (!subText.trim() || !sel || sel.type !== 'study') return;
+    const t = tasks.find(t => t.id === sel.dbId);
     if (!t) return;
-    await onUpdateTask(t.id, { subtasks: [...(t.subtasks || []), { id: `sub-${Date.now()}`, text: newSubtaskText.trim(), completed: false }] });
-    setNewSubtaskText('');
+    await onUpdateTask(t.id, { subtasks: [...(t.subtasks||[]), {id:`sub-${Date.now()}`,text:subText.trim(),completed:false}] });
+    setSubText('');
   };
-  const handleSaveNotes = async () => {
-    if (!selectedBlock) return;
-    if (selectedBlock.type === 'study') await onUpdateTask(selectedBlock.dbId, { notes: noteText });
-    else await onUpdateEvent(selectedBlock.dbId, { notes: noteText });
-    setIsEditingNotes(false);
+  const saveNote = async () => {
+    if (!sel) return;
+    if (sel.type === 'study') await onUpdateTask(sel.dbId, { notes: noteText });
+    else await onUpdateEvent(sel.dbId, { notes: noteText });
+    setEditingNote(false);
   };
-  const handleDeleteSelectedItem = async () => {
-    if (!selectedBlock) return;
-    if (!window.confirm(`Delete this ${selectedBlock.type === 'study' ? 'task' : 'class'}?`)) return;
-    if (selectedBlock.type === 'study') await onDeleteTask(selectedBlock.dbId);
-    else await onDeleteEvent(selectedBlock.dbId);
-    setSelectedBlock(null);
-  };
-  const formatTimeRange = (a: string, b: string) => {
-    const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-    return `${fmt(new Date(a))} - ${fmt(new Date(b))}`;
+  const delSel = async () => {
+    if (!sel) return;
+    if (!window.confirm(`Delete this ${sel.type === 'study' ? 'task' : 'event'}?`)) return;
+    if (sel.type === 'study') await onDeleteTask(sel.dbId);
+    else await onDeleteEvent(sel.dbId);
+    setSel(null);
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Todo add
+  const handleAddTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTodo.trim()) return;
+    await onAddTodo(newTodo.trim());
+    setNewTodo('');
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '100%', overflowX: 'hidden' }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem', maxWidth:'100%', overflowX:'hidden', paddingBottom:'100px' }}>
 
-      {/* 1. SCHEDULE QUICK LINK */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-          <Calendar size={16} />
-          <span>Weekly Schedule</span>
-        </div>
-        <button onClick={onOpenSchedule} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-          Open Schedule
-        </button>
-      </div>
-
-      {/* 2. DAILY PROGRESS STRIP */}
-      <div className="card" style={{ padding: '1rem 1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-        <div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Today</div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{completedToday}<span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-secondary)' }}>/{totalToday} sessions</span></div>
-          <div style={{ marginTop: '0.4rem', height: '4px', borderRadius: '2px', backgroundColor: 'rgba(255,255,255,0.06)' }}>
-            <div style={{ height: '100%', width: `${progressPct}%`, borderRadius: '2px', backgroundColor: progressPct === 100 ? '#34d399' : 'var(--primary)', transition: 'width 0.4s ease' }} />
+      {/* ── MINI SCHEDULE ──────────────────────────────────────────────────── */}
+      <div className="card" style={{ padding:'1rem' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', color:'#fff', fontWeight:600, fontSize:'0.9rem' }}>
+            <CalendarDays size={16} className="logo-icon" />
+            <span>{todayName}</span>
+            <span style={{ color:'var(--text-muted)', fontWeight:400, fontSize:'0.78rem', marginLeft:'0.25rem' }}>{new Date().toLocaleDateString([],{month:'short',day:'numeric'})}</span>
           </div>
+          <button onClick={onOpenSchedule} className="btn btn-secondary" style={{ padding:'4px 12px', fontSize:'0.75rem' }}>Full view</button>
         </div>
-        <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Next up</div>
-          {nextItem ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>{nextItem.title}</span>
-              <ArrowRight size={12} color="var(--text-muted)" />
-              <span style={{ fontSize: '0.75rem', color: 'var(--accent)', whiteSpace: 'nowrap' }}>{nextLabel}</span>
+
+        {/* Horizontal timeline bar */}
+        <div style={{ position:'relative', height:'36px', backgroundColor:'rgba(255,255,255,0.03)', borderRadius:'8px', overflow:'hidden' }}>
+          {/* Hour markers */}
+          {[8,10,12,14,16,18,20,22].map(h => (
+            <div key={h} style={{ position:'absolute', left:`${pct(h*60)}%`, top:0, bottom:0, width:'1px', backgroundColor:'rgba(255,255,255,0.05)' }}>
+              <span style={{ position:'absolute', top:'2px', left:'2px', fontSize:'9px', color:'var(--text-muted)' }}>{h}</span>
             </div>
-          ) : (
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{nextLabel}</span>
+          ))}
+
+          {/* Blocks */}
+          {todayTimeline.map(item => {
+            const s = pct(toMinutes(item.start));
+            const e = pct(toMinutes(item.end));
+            const w = Math.max(e - s, 1.5);
+            return (
+              <div key={item.id} title={item.title}
+                onClick={() => setSel({ type:item.type, id:item.id, dbId:item.dbId, title:item.title, category:item.type==='fixed'?'fixed commitment':'study block', start:item.start, end:item.end, completed:item.completed })}
+                style={{ position:'absolute', left:`${s}%`, width:`${w}%`, top:'6px', bottom:'6px', backgroundColor: item.completed ? 'rgba(52,211,153,0.4)' : item.color + 'cc', borderRadius:'4px', cursor:'pointer', minWidth:'6px', transition:'opacity 0.15s' }}
+              />
+            );
+          })}
+
+          {/* Now line */}
+          {nowPct > 0 && nowPct < 100 && (
+            <div style={{ position:'absolute', left:`${nowPct}%`, top:0, bottom:0, width:'2px', backgroundColor:'#fff', opacity:0.7, borderRadius:'1px' }} />
           )}
         </div>
-        <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overdue</div>
-          {overdueTasks.length === 0
-            ? <span style={{ fontSize: '0.85rem', color: '#34d399' }}>None</span>
-            : <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <AlertCircle size={14} color="#f87171" />
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f87171' }}>{overdueTasks.length}</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>task{overdueTasks.length !== 1 ? 's' : ''}</span>
+
+        {/* Time labels */}
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:'4px', fontSize:'0.68rem', color:'var(--text-muted)' }}>
+          <span>07:00</span><span>23:00</span>
+        </div>
+      </div>
+
+      {/* ── DAILY PROGRESS STRIP ──────────────────────────────────────────── */}
+      <div className="card" style={{ padding:'0.9rem 1.1rem', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0.75rem' }}>
+        <div>
+          <div style={{ fontSize:'0.65rem', color:'var(--text-muted)', marginBottom:'0.25rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Today</div>
+          <div style={{ fontSize:'1rem', fontWeight:700, color:'#fff' }}>{doneSessions}<span style={{ fontSize:'0.75rem', fontWeight:400, color:'var(--text-secondary)' }}>/{totalSessions}</span></div>
+          <div style={{ marginTop:'0.35rem', height:'3px', borderRadius:'2px', backgroundColor:'rgba(255,255,255,0.06)' }}>
+            <div style={{ height:'100%', width:`${progressPct}%`, borderRadius:'2px', backgroundColor: progressPct===100 ? '#34d399' : 'var(--primary)', transition:'width 0.4s' }} />
+          </div>
+        </div>
+        <div style={{ borderLeft:'1px solid var(--border-color)', paddingLeft:'0.75rem' }}>
+          <div style={{ fontSize:'0.65rem', color:'var(--text-muted)', marginBottom:'0.25rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Next</div>
+          {nextItem
+            ? <div style={{ display:'flex', alignItems:'center', gap:'0.25rem' }}>
+                <span style={{ fontSize:'0.8rem', fontWeight:600, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'80px' }}>{nextItem.title}</span>
+                <ArrowRight size={11} color="var(--text-muted)" />
+                <span style={{ fontSize:'0.7rem', color:'var(--accent)', whiteSpace:'nowrap' }}>{nextLabel}</span>
+              </div>
+            : <span style={{ fontSize:'0.8rem', color:'var(--text-secondary)' }}>{nextLabel}</span>
+          }
+        </div>
+        <div style={{ borderLeft:'1px solid var(--border-color)', paddingLeft:'0.75rem' }}>
+          <div style={{ fontSize:'0.65rem', color:'var(--text-muted)', marginBottom:'0.25rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Overdue</div>
+          {overdue.length === 0
+            ? <span style={{ fontSize:'0.8rem', color:'#34d399' }}>None</span>
+            : <div style={{ display:'flex', alignItems:'center', gap:'0.3rem' }}>
+                <AlertCircle size={13} color="#f87171" />
+                <span style={{ fontSize:'1rem', fontWeight:700, color:'#f87171' }}>{overdue.length}</span>
               </div>
           }
         </div>
       </div>
 
-      {/* 3. INSPECTOR */}
-      {selectedBlock && inspectorDetails && (
-        <div className="card" style={{ border: `1.5px solid ${inspectorDetails.color}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+      {/* ── INSPECTOR ─────────────────────────────────────────────────────── */}
+      {sel && insp && (
+        <div className="card" style={{ border:`1.5px solid ${insp.color}` }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', borderBottom:'1px solid var(--border-color)', paddingBottom:'0.7rem', marginBottom:'1rem' }}>
             <div>
-              <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 700, backgroundColor: `${inspectorDetails.color}22`, color: inspectorDetails.color }}>{inspectorDetails.category}</span>
-              <h3 style={{ margin: '6px 0 0', color: '#fff', fontSize: '1.2rem' }}>{inspectorDetails.title} {inspectorDetails.priority && getPriorityEmoji(inspectorDetails.priority)}</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '6px' }}>
-                <Clock size={14} /><span>{inspectorDetails.timeRange}</span>
+              <span style={{ fontSize:'0.6rem', padding:'2px 7px', borderRadius:'4px', textTransform:'uppercase', fontWeight:700, backgroundColor:`${insp.color}22`, color:insp.color }}>{insp.category}</span>
+              <h3 style={{ margin:'5px 0 0', color:'#fff', fontSize:'1.1rem' }}>{insp.title} {insp.priority && prioEmoji(insp.priority)}</h3>
+              <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', color:'var(--text-secondary)', fontSize:'0.78rem', marginTop:'5px' }}>
+                <Clock size={13}/><span>{insp.timeRange}</span>
               </div>
             </div>
-            <button onClick={() => setSelectedBlock(null)} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>Close</button>
+            <button onClick={() => setSel(null)} className="btn btn-secondary" style={{ padding:'5px 10px', fontSize:'0.7rem' }}>Close</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+
+          <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}><FileText size={16} /><span>Notes</span></div>
-                <button onClick={() => { if (isEditingNotes) handleSaveNotes(); else { setNoteText(inspectorDetails?.notes || ''); setIsEditingNotes(true); } }} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '0.7rem' }}>{isEditingNotes ? 'Save' : 'Edit'}</button>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.4rem' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.85rem', fontWeight:600, color:'#fff' }}><FileText size={14}/> Notes</div>
+                <button onClick={() => { if(editingNote) saveNote(); else { setNoteText(insp.notes); setEditingNote(true); } }} className="btn btn-secondary" style={{ padding:'3px 9px', fontSize:'0.68rem' }}>{editingNote ? 'Save' : 'Edit'}</button>
               </div>
-              {isEditingNotes
-                ? <textarea className="form-control" style={{ width: '100%', minHeight: '80px', fontSize: '0.9rem' }} value={noteText} onChange={e => setNoteText(e.target.value)} />
-                : <div style={{ backgroundColor: 'rgba(0,0,0,0.15)', padding: '1rem', borderRadius: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{inspectorDetails.notes}</div>
+              {editingNote
+                ? <textarea className="form-control" style={{ width:'100%', minHeight:'70px', fontSize:'0.85rem', boxSizing:'border-box' }} value={noteText} onChange={e => setNoteText(e.target.value)} />
+                : <div style={{ backgroundColor:'rgba(0,0,0,0.15)', padding:'0.75rem', borderRadius:'8px', fontSize:'0.85rem', color:'var(--text-secondary)', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{insp.notes || 'No notes.'}</div>
               }
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <button onClick={() => onOpenManager()} className="btn btn-primary" style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}>Edit Details</button>
-              <button onClick={handleDeleteSelectedItem} className="btn btn-danger" style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}>Delete Item</button>
+            <div style={{ display:'flex', gap:'0.5rem' }}>
+              <button onClick={onOpenManager} className="btn btn-primary" style={{ flex:1, padding:'9px', fontSize:'0.82rem' }}>Edit</button>
+              <button onClick={delSel} className="btn btn-danger" style={{ flex:1, padding:'9px', fontSize:'0.82rem' }}>Delete</button>
             </div>
-            {selectedBlock.type === 'study' && (
+            {sel.type === 'study' && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: '#fff', marginBottom: '0.75rem' }}><CheckSquare size={16} /><span>Checklist</span></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {inspectorDetails.subtasks.map((st: any) => (
-                    <div key={st.id} onClick={() => handleToggleSubtask(st.id)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem', cursor: 'pointer', padding: '4px' }}>
-                      {st.completed ? <CheckSquare size={18} color="var(--success)" /> : <Square size={18} color="var(--text-muted)" />}
+                <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.85rem', fontWeight:600, color:'#fff', marginBottom:'0.6rem' }}><CheckSquare size={14}/> Checklist</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                  {insp.subtasks.map((st: any) => (
+                    <div key={st.id} onClick={() => toggleSub(st.id)} style={{ display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'0.85rem', cursor:'pointer', padding:'3px' }}>
+                      {st.completed ? <CheckSquare size={16} color="#34d399"/> : <Square size={16} color="var(--text-muted)"/>}
                       <span style={{ textDecoration: st.completed ? 'line-through' : 'none', color: st.completed ? 'var(--text-muted)' : '#fff' }}>{st.text}</span>
                     </div>
                   ))}
-                  <form onSubmit={handleAddSubtask} style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                    <input type="text" className="form-control" placeholder="Add sub-task..." value={newSubtaskText} onChange={e => setNewSubtaskText(e.target.value)} style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem' }} />
-                    <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Add</button>
+                  <form onSubmit={addSub} style={{ display:'flex', gap:'6px', marginTop:'4px' }}>
+                    <input type="text" className="form-control" placeholder="Add item…" value={subText} onChange={e => setSubText(e.target.value)} style={{ flex:1, padding:'7px 10px', fontSize:'0.82rem' }} />
+                    <button type="submit" className="btn btn-primary" style={{ padding:'7px 14px', fontSize:'0.82rem' }}>Add</button>
                   </form>
                 </div>
               </div>
@@ -339,34 +354,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* 4. TODAY'S SCHEDULE */}
+      {/* ── TODAY'S SCHEDULE ──────────────────────────────────────────────── */}
       <div className="card">
-        <div className="card-title" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Clock className="logo-icon" size={20} />
-            <h3>Today's Schedule</h3>
+        <div className="card-title" style={{ justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}>
+            <Clock className="logo-icon" size={18}/>
+            <h3>Today</h3>
           </div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{todayDayName}</span>
+          <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>{todayName}</span>
         </div>
         {todayTimeline.length === 0
-          ? <p style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Nothing scheduled today.</p>
+          ? <p style={{ textAlign:'center', padding:'2rem', color:'var(--text-secondary)', fontSize:'0.85rem' }}>Nothing scheduled today.</p>
           : <div className="timeline">
               {todayTimeline.map(item => {
                 const isStudy = item.type === 'study';
-                const duration = (new Date(item.end).getTime() - new Date(item.start).getTime()) / 3600000;
+                const dur = (new Date(item.end).getTime() - new Date(item.start).getTime()) / 3600000;
                 return (
-                  <div key={item.id} className="timeline-item" style={{ gap: '1rem' }}>
-                    <div className="timeline-time" style={{ width: '80px', fontSize: '0.8rem' }}>{formatTimeRange(item.start, item.end)}</div>
-                    <div className="timeline-marker"><div className="timeline-dot" style={{ backgroundColor: item.color }} /><div className="timeline-line" /></div>
+                  <div key={item.id} className="timeline-item" style={{ gap:'0.75rem' }}>
+                    <div className="timeline-time" style={{ width:'72px', fontSize:'0.72rem' }}>{fmtRange(item.start, item.end)}</div>
+                    <div className="timeline-marker"><div className="timeline-dot" style={{ backgroundColor:item.color }}/><div className="timeline-line"/></div>
                     <div className="timeline-content">
-                      <div className="timeline-card" style={{ borderLeft: `4px solid ${item.color}`, padding: '0.75rem 1rem' }}>
-                        <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setSelectedBlock({ type: item.type, id: item.id, dbId: item.dbId, title: item.title, category: isStudy ? 'study block' : 'fixed commitment', start: item.start, end: item.end, completed: item.completed })}>
-                          <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.95rem' }}>{getCategoryEmoji(item.category)} {item.title}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{duration.toFixed(1)} hr{duration !== 1 ? 's' : ''} • {item.category}</div>
+                      <div className="timeline-card" style={{ borderLeft:`3px solid ${item.color}`, padding:'0.6rem 0.9rem' }}>
+                        <div style={{ flex:1, cursor:'pointer' }} onClick={() => setSel({ type:item.type, id:item.id, dbId:item.dbId, title:item.title, category:isStudy?'study block':'fixed event', start:item.start, end:item.end, completed:item.completed })}>
+                          <div style={{ fontWeight:600, color:'#fff', fontSize:'0.88rem' }}>{catEmoji(item.category)} {item.title}</div>
+                          <div style={{ fontSize:'0.7rem', color:'var(--text-secondary)', marginTop:'2px' }}>{dur.toFixed(1)}h • {item.category}</div>
                         </div>
                         {isStudy && (
-                          <button onClick={() => onToggleSession(item.id, !item.completed, duration, item.dbId)} className="btn" style={{ padding: '6px 12px', fontSize: '0.75rem', backgroundColor: item.completed ? 'rgba(16,185,129,0.1)' : 'transparent', border: '1px solid var(--border-color)', color: item.completed ? 'var(--success)' : '#fff' }}>
-                            <CheckCircle2 size={14} />
+                          <button onClick={() => onToggleSession(item.id, !item.completed, dur, item.dbId)} className="btn" style={{ padding:'5px 10px', fontSize:'0.7rem', backgroundColor: item.completed ? 'rgba(52,211,153,0.1)' : 'transparent', border:'1px solid var(--border-color)', color: item.completed ? '#34d399' : '#fff' }}>
+                            <CheckCircle2 size={13}/>
                           </button>
                         )}
                       </div>
@@ -378,23 +393,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
         }
       </div>
 
-      {/* 5. TASKS & DEADLINES */}
+      {/* ── TASKS & DEADLINES ─────────────────────────────────────────────── */}
       <div className="dashboard-grid">
         <div className="card">
-          <div className="card-title"><Star size={20} className="logo-icon" /><h3>Priorities</h3></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="card-title"><Star size={18} className="logo-icon"/><h3>Priorities</h3></div>
+          <div style={{ display:'flex', flexDirection:'column', gap:'0.85rem' }}>
             {activeTasks.length === 0
-              ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>No active tasks.</p>
-              : activeTasks.slice(0, 3).map(task => (
-                  <div key={task.id} style={{ padding: '1rem', backgroundColor: 'rgba(255,255,255,0.015)', borderRadius: '12px', border: '1px solid var(--border-color)', borderLeft: `3px solid ${task.color}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#fff' }}>{getCategoryEmoji(task.category)} {task.title}</span>
-                      <span style={{ fontSize: '1rem' }}>{getPriorityEmoji(task.priority)}</span>
+              ? <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', textAlign:'center', padding:'0.75rem' }}>No active tasks.</p>
+              : activeTasks.slice(0,3).map(t => (
+                  <div key={t.id} style={{ padding:'0.85rem', backgroundColor:'rgba(255,255,255,0.015)', borderRadius:'10px', border:'1px solid var(--border-color)', borderLeft:`3px solid ${t.color}` }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'0.4rem' }}>
+                      <span style={{ fontWeight:600, fontSize:'0.85rem', color:'#fff' }}>{catEmoji(t.category)} {t.title}</span>
+                      <span>{prioEmoji(t.priority)}</span>
                     </div>
-                    <div className="progress-container" style={{ height: '5px' }}><div className="progress-bar" style={{ width: `${(task.completedHours / task.estimatedHours) * 100}%`, backgroundColor: task.color }} /></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginTop: '6px', color: 'var(--text-secondary)' }}>
-                      <span>{task.completedHours}/{task.estimatedHours}h</span>
-                      <span>{task.hasDeadline ? formatDateDDMMYY(task.deadline) : 'No Deadline'}</span>
+                    <div className="progress-container" style={{ height:'4px' }}><div className="progress-bar" style={{ width:`${(t.completedHours/t.estimatedHours)*100}%`, backgroundColor:t.color }}/></div>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.68rem', marginTop:'5px', color:'var(--text-secondary)' }}>
+                      <span>{t.completedHours}/{t.estimatedHours}h</span>
+                      <span>{t.hasDeadline ? fmtDate(t.deadline) : 'No deadline'}</span>
                     </div>
                   </div>
                 ))
@@ -403,28 +418,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="card">
-          <div className="card-title"><Bookmark size={20} className="logo-icon" /><h3>Deadlines</h3></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {overdueTasks.length > 0 && (
-              <>
-                <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#f87171', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <AlertCircle size={11} /> Overdue
+          <div className="card-title"><Bookmark size={18} className="logo-icon"/><h3>Deadlines</h3></div>
+          <div style={{ display:'flex', flexDirection:'column', gap:'0.6rem' }}>
+            {overdue.length > 0 && <>
+              <div style={{ fontSize:'0.62rem', textTransform:'uppercase', letterSpacing:'0.08em', color:'#f87171', fontWeight:700, display:'flex', alignItems:'center', gap:'0.25rem' }}>
+                <AlertCircle size={10}/> Overdue
+              </div>
+              {overdue.map(t => (
+                <div key={t.id} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.82rem', padding:'0.45rem 0.55rem', borderRadius:'6px', backgroundColor:'rgba(248,113,113,0.07)', border:'1px solid rgba(248,113,113,0.15)' }}>
+                  <span style={{ color:'#fca5a5' }}>{catEmoji(t.category)} {t.title}</span>
+                  <span style={{ color:'#f87171', fontWeight:700 }}>{fmtDate(t.deadline)}</span>
                 </div>
-                {overdueTasks.map(task => (
-                  <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '0.5rem 0.6rem', borderRadius: '6px', backgroundColor: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.15)' }}>
-                    <span style={{ color: '#fca5a5' }}>{getCategoryEmoji(task.category)} {task.title}</span>
-                    <span style={{ color: '#f87171', fontWeight: 700 }}>{formatDateDDMMYY(task.deadline)}</span>
-                  </div>
-                ))}
-                {upcomingDeadlines.length > 0 && <div style={{ height: '1px', backgroundColor: 'var(--border-color)' }} />}
-              </>
-            )}
-            {upcomingDeadlines.length === 0 && overdueTasks.length === 0
-              ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>No upcoming deadlines.</p>
-              : upcomingDeadlines.slice(0, 5).map(task => (
-                  <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '0.6rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                    <span style={{ color: '#fff' }}>{getCategoryEmoji(task.category)} {task.title}</span>
-                    <span style={{ color: task.color, fontWeight: 700 }}>{formatDateDDMMYY(task.deadline)}</span>
+              ))}
+              {upcomingDeadlines.length > 0 && <div style={{ height:'1px', backgroundColor:'var(--border-color)' }}/>}
+            </>}
+            {upcomingDeadlines.length === 0 && overdue.length === 0
+              ? <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', textAlign:'center', padding:'0.75rem' }}>No upcoming deadlines.</p>
+              : upcomingDeadlines.slice(0,5).map(t => (
+                  <div key={t.id} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.82rem', padding:'0.5rem 0', borderBottom:'1px solid var(--border-color)' }}>
+                    <span style={{ color:'#fff' }}>{catEmoji(t.category)} {t.title}</span>
+                    <span style={{ color:t.color, fontWeight:700 }}>{fmtDate(t.deadline)}</span>
                   </div>
                 ))
             }
@@ -432,118 +445,126 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* 6. WEEKLY STATS + POMODORO */}
+      {/* ── WEEKLY STATS + POMODORO ───────────────────────────────────────── */}
       <div className="dashboard-grid">
-
-        {/* Weekly Stats */}
         <div className="card">
-          <div className="card-title"><BarChart2 size={20} className="logo-icon" /><h3>This Week</h3></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="card-title"><BarChart2 size={18} className="logo-icon"/><h3>This Week</h3></div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
             {[
-              { label: 'Sessions done', value: `${weekDone.length}/${weekSessions.length}` },
-              { label: 'Hours studied', value: `${weekHours.toFixed(1)}h` },
-              { label: 'Completion rate', value: `${weekRate}%` },
-              { label: 'Tasks finished', value: `${weekTasksDone}` },
-            ].map(stat => (
-              <div key={stat.label} style={{ padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>{stat.label}</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>{stat.value}</div>
+              { label:'Sessions', value:`${weekDone.length}/${weekSess.length}` },
+              { label:'Hours', value:`${weekHrs.toFixed(1)}h` },
+              { label:'Completion', value:`${weekRate}%` },
+              { label:'Tasks done', value:`${weekTasksDone}` },
+            ].map(s => (
+              <div key={s.label} style={{ padding:'0.65rem', backgroundColor:'rgba(255,255,255,0.02)', borderRadius:'8px', border:'1px solid var(--border-color)' }}>
+                <div style={{ fontSize:'0.6rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'0.2rem' }}>{s.label}</div>
+                <div style={{ fontSize:'1.15rem', fontWeight:700, color:'#fff' }}>{s.value}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Pomodoro Timer */}
         <div className="card">
-          <div className="card-title"><Timer size={20} className="logo-icon" /><h3>Focus Timer</h3></div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', paddingTop: '0.5rem' }}>
-            {/* Mode toggle */}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {(['work', 'break'] as const).map(mode => (
-                <button key={mode} onClick={() => { setPomMode(mode); setPomRunning(false); setPomSecs(mode === 'work' ? POMODORO_WORK : POMODORO_BREAK); }}
-                  className="btn" style={{ padding: '4px 14px', fontSize: '0.75rem', backgroundColor: pomMode === mode ? 'var(--primary)' : 'transparent', border: `1px solid ${pomMode === mode ? 'var(--primary)' : 'var(--border-color)'}`, color: pomMode === mode ? '#fff' : 'var(--text-secondary)' }}>
-                  {mode === 'work' ? 'Focus' : 'Break'}
+          <div className="card-title"><Timer size={18} className="logo-icon"/><h3>Focus Timer</h3></div>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.85rem' }}>
+            <div style={{ display:'flex', gap:'0.4rem' }}>
+              {(['work','break'] as const).map(m => (
+                <button key={m} onClick={() => { setPomMode(m); setPomRunning(false); setPomSecs(m==='work'?WORK_SECS:BREAK_SECS); }}
+                  className="btn" style={{ padding:'3px 12px', fontSize:'0.72rem', backgroundColor: pomMode===m ? 'var(--primary)' : 'transparent', border:`1px solid ${pomMode===m ? 'var(--primary)' : 'var(--border-color)'}`, color: pomMode===m ? '#fff' : 'var(--text-secondary)' }}>
+                  {m === 'work' ? 'Focus' : 'Break'}
                 </button>
               ))}
             </div>
 
-            {/* Ring + time */}
-            <div style={{ position: 'relative', width: '100px', height: '100px' }}>
-              <svg width="100" height="100" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
-                <circle cx="50" cy="50" r="44" fill="none"
-                  stroke={pomMode === 'work' ? 'var(--primary)' : '#34d399'}
-                  strokeWidth="8" strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 44}`}
-                  strokeDashoffset={`${2 * Math.PI * 44 * (1 - pomPct / 100)}`}
-                  style={{ transition: 'stroke-dashoffset 1s linear' }}
+            <div style={{ position:'relative', width:'90px', height:'90px' }}>
+              <svg width="90" height="90" style={{ transform:'rotate(-90deg)', overflow:'visible' }}>
+                <circle cx="45" cy="45" r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7"/>
+                <circle ref={ringRef} cx="45" cy="45" r={R} fill="none"
+                  stroke={pomMode==='work' ? 'var(--primary)' : '#34d399'}
+                  strokeWidth="7" strokeLinecap="round"
+                  strokeDasharray={CIRC}
+                  strokeDashoffset={CIRC}
+                  style={{ transformOrigin:'center' }}
                 />
               </svg>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                <span style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{pomMins}:{pomSecStr}</span>
+              <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ fontSize:'1.2rem', fontWeight:700, color:'#fff', fontVariantNumeric:'tabular-nums' }}>{pomM}:{pomS}</span>
               </div>
             </div>
 
-            {/* Controls */}
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button onClick={() => setPomRunning(r => !r)} className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                {pomRunning ? <Pause size={15} /> : <Play size={15} />}
+            <div style={{ display:'flex', gap:'0.6rem' }}>
+              <button onClick={() => setPomRunning(r => !r)} className="btn btn-primary" style={{ padding:'7px 18px', fontSize:'0.82rem', display:'flex', alignItems:'center', gap:'0.35rem' }}>
+                {pomRunning ? <Pause size={13}/> : <Play size={13}/>}
                 {pomRunning ? 'Pause' : 'Start'}
               </button>
-              <button onClick={resetPomodoro} className="btn btn-secondary" style={{ padding: '8px 12px' }}>
-                <RotateCcw size={15} />
-              </button>
+              <button onClick={resetPom} className="btn btn-secondary" style={{ padding:'7px 11px' }}><RotateCcw size={13}/></button>
             </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-              {pomMode === 'work' ? '25 min focus block' : '5 min break'}
+            <p style={{ fontSize:'0.7rem', color:'var(--text-muted)', textAlign:'center', margin:0 }}>
+              {pomMode==='work' ? '25 min focus' : '5 min break'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* 7. QUICK TO-DO */}
+      {/* ── QUICK TO-DO ───────────────────────────────────────────────────── */}
       <div className="card">
-        <div className="card-title" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ListTodo size={20} className="logo-icon" />
-            <h3>Quick To-Do</h3>
+        <div className="card-title" style={{ justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}>
+            <ListTodo size={18} className="logo-icon"/>
+            <h3>To-Do</h3>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{todos.filter(t => t.done).length}/{todos.length} done</span>
-            {todos.some(t => t.done) && (
-              <button onClick={clearDone} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '0.72rem' }}>Clear done</button>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.6rem' }}>
+            <span style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>{todos.filter(t=>t.done).length}/{todos.length}</span>
+            {todos.some(t=>t.done) && (
+              <button onClick={onClearDoneTodos} className="btn btn-secondary" style={{ padding:'3px 9px', fontSize:'0.7rem' }}>Clear</button>
             )}
           </div>
         </div>
 
-        <form onSubmit={addTodo} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Add a to-do for today..."
-            value={newTodo}
-            onChange={e => setNewTodo(e.target.value)}
-            style={{ flex: 1, padding: '8px 12px', fontSize: '0.9rem' }}
-          />
-          <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Add</button>
+        <form onSubmit={handleAddTodo} style={{ display:'flex', gap:'0.5rem', marginBottom:'0.85rem' }}>
+          <input type="text" className="form-control" placeholder="Add a to-do…" value={newTodo} onChange={e => setNewTodo(e.target.value)} style={{ flex:1, padding:'8px 11px', fontSize:'0.88rem' }} />
+          <button type="submit" className="btn btn-primary" style={{ padding:'8px 14px', fontSize:'0.82rem' }}>Add</button>
         </form>
 
         {todos.length === 0
-          ? <p style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Nothing here yet.</p>
-          : <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          ? <p style={{ textAlign:'center', padding:'1.25rem', color:'var(--text-muted)', fontSize:'0.82rem' }}>Nothing here yet.</p>
+          : <div style={{ display:'flex', flexDirection:'column', gap:'0.45rem' }}>
               {todos.map(todo => (
-                <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.75rem', borderRadius: '8px', backgroundColor: todo.done ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)', transition: 'background 0.15s' }}>
-                  <button onClick={() => toggleTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, color: todo.done ? '#34d399' : 'var(--text-muted)', display: 'flex' }}>
-                    {todo.done ? <CheckCircle2 size={18} /> : <Square size={18} />}
+                <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.55rem 0.7rem', borderRadius:'8px', backgroundColor: todo.done ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.025)', border:'1px solid var(--border-color)' }}>
+                  <button onClick={() => onToggleTodo(todo.id, !todo.done)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, color: todo.done ? '#34d399' : 'var(--text-muted)', display:'flex', flexShrink:0 }}>
+                    {todo.done ? <CheckCircle2 size={17}/> : <Square size={17}/>}
                   </button>
-                  <span style={{ flex: 1, fontSize: '0.9rem', color: todo.done ? 'var(--text-muted)' : '#fff', textDecoration: todo.done ? 'line-through' : 'none' }}>{todo.text}</span>
-                  <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-muted)', display: 'flex', opacity: 0.5 }}>
-                    <Trash2 size={14} />
+                  <span style={{ flex:1, fontSize:'0.88rem', color: todo.done ? 'var(--text-muted)' : '#fff', textDecoration: todo.done ? 'line-through' : 'none' }}>{todo.text}</span>
+                  <button onClick={() => onDeleteTodo(todo.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:'var(--text-muted)', display:'flex', opacity:0.5 }}>
+                    <Trash2 size={13}/>
                   </button>
                 </div>
               ))}
             </div>
         }
+      </div>
+
+      {/* ── FAB ───────────────────────────────────────────────────────────── */}
+      <div style={{ position:'fixed', bottom:'calc(24px + env(safe-area-inset-bottom))', right:'20px', zIndex:500, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'10px' }}>
+        {fabOpen && (
+          <>
+            {[
+              { label:'Add Task', onClick: onOpenManager },
+              { label:'Add Class', onClick: onOpenManager },
+              { label:'Manage', onClick: onOpenManager },
+            ].map((item, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                <span style={{ backgroundColor:'rgba(25,35,48,0.95)', color:'#fff', padding:'4px 10px', borderRadius:'6px', fontSize:'0.78rem', fontWeight:500, backdropFilter:'blur(8px)', border:'1px solid var(--border-color)' }}>{item.label}</span>
+                <button onClick={() => { item.onClick(); setFabOpen(false); }} className="btn btn-secondary" style={{ width:'40px', height:'40px', borderRadius:'50%', padding:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <Plus size={16}/>
+                </button>
+              </div>
+            ))}
+          </>
+        )}
+        <button onClick={() => setFabOpen(o => !o)} style={{ width:'52px', height:'52px', borderRadius:'50%', backgroundColor:'var(--primary)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px rgba(234,84,85,0.4)', transition:'transform 0.2s', transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+          {fabOpen ? <X size={22} color="#fff"/> : <Plus size={22} color="#fff"/>}
+        </button>
       </div>
 
     </div>

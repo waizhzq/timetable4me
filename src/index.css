@@ -265,18 +265,83 @@ a:hover {
   border-bottom: 1px solid var(--border-color);
 }
 
-@media (max-width: 600px) {
+/* ── Mobile — iPhone 16 (390px) and up ───────────────────────────────────── */
+@media (max-width: 640px) {
   .main-content {
-    padding: 1rem 0.75rem;
+    padding: 0.875rem 0.875rem;
+    gap: 1rem;
+    margin-left: 0 !important;
+  }
+
+  .header-bar {
+    padding-bottom: 0.875rem;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    background-color: var(--bg-app);
+    margin: -0.875rem -0.875rem 0;
+    padding: 0.75rem 0.875rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .logo-text {
+    font-size: 1rem !important;
+  }
+
+  .header-schedule-btn .header-btn-label {
+    display: none;
+  }
+
+  .header-schedule-btn {
+    padding: 7px !important;
+    border-radius: 50% !important;
+  }
+
+  .card {
+    padding: 0.875rem;
+    border-radius: var(--border-radius-md);
+  }
+
+  /* Stack 2-col grids to 1 col */
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
     gap: 1rem;
   }
-  .header-bar {
-    padding-bottom: 1rem;
+
+  /* Notifications panel — full width on mobile */
+  .notifications-panel {
+    position: fixed !important;
+    top: 56px !important;
+    left: 0.875rem !important;
+    right: 0.875rem !important;
+    width: auto !important;
   }
-  .card {
-    padding: 1rem;
+
+  /* Bigger touch targets */
+  .btn {
+    min-height: 40px;
+  }
+
+  .timeline-time {
+    width: 62px !important;
+    font-size: 0.68rem !important;
+  }
+
+  h3 {
+    font-size: 0.95rem;
   }
 }
+
+/* Safe area for FAB on notched phones */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .main-content {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* No scrollbar helper (used in ScheduleView) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 .header-title-container h1 {
   margin-bottom: 0.25rem;

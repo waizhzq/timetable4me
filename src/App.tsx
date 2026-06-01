@@ -1,25 +1,15 @@
 import { useState, useEffect } from 'react';
 import { dbService } from './services/db';
-import type { Task, FixedEvent, StudySession, UserPreferences, UserProfile } from './services/db';
+import type { Task, FixedEvent, StudySession, UserPreferences, UserProfile, Todo } from './services/db';
 import { generateSchedule } from './services/scheduler';
 import { Auth } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
 import { ScheduleView } from './components/ScheduleView';
 import { ScheduleManager } from './components/ScheduleManager';
-import {
-  Bell,
-  LogOut,
-  X,
-  CalendarDays,
-  Calendar as CalendarIcon
-} from 'lucide-react';
+import { Bell, LogOut, X, CalendarDays, Calendar as CalendarIcon } from 'lucide-react';
 
 interface InAppNotification {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
+  id: string; title: string; message: string; time: string; read: boolean;
 }
 
 function App() {
@@ -27,309 +17,183 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<'dashboard' | 'schedule'>('dashboard');
 
-  // Core Data States
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<FixedEvent[]>([]);
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [conflictedTaskIds, setConflictedTaskIds] = useState<string[]>([]);
+  const [todos, setTodos] = useState<Todo[]>([]);
 
-  // UI States
   const [showManager, setShowManager] = useState(false);
-  const [editingItem, setEditingItem] = useState<{ type: 'task' | 'event', id: string } | null>(null);
-
-  // Notifications
+  const [editingItem] = useState<{ type: 'task' | 'event'; id: string } | null>(null);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
 
-  // Monitor Auth State
+  const todayStr = new Date().toISOString().split('T')[0];
+
   useEffect(() => {
-    const unsubscribe = dbService.onAuthStateChanged((profile) => {
+    const unsub = dbService.onAuthStateChanged((profile) => {
       setUser(profile);
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
-  // Fetch initial data when user logs in
   useEffect(() => {
-    if (user) {
-      loadUserData();
-    }
+    if (user) loadUserData();
   }, [user]);
 
-  // Periodic check for upcoming sessions or deadlines
   useEffect(() => {
     if (!user || tasks.length === 0 || sessions.length === 0) return;
-
-    const runChecks = () => {
+    const check = () => {
       const now = new Date();
-      const currentNotifs: InAppNotification[] = [];
-
-      // 1. Check for upcoming sessions (starts in 15 minutes)
-      sessions.forEach((session) => {
-        if (session.completed) return;
-        const sTime = new Date(session.start);
-        const diffMs = sTime.getTime() - now.getTime();
-        const diffMins = diffMs / (1000 * 60);
-
-        if (diffMins > 0 && diffMins <= 15) {
-          currentNotifs.push({
-            id: `session-warning-${session.id}`,
-            title: 'Upcoming Session',
-            message: `"${session.taskTitle}" study block starts in ${Math.ceil(diffMins)} minutes!`,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            read: false,
-          });
-        }
+      const notifs: InAppNotification[] = [];
+      sessions.forEach(s => {
+        if (s.completed) return;
+        const diff = (new Date(s.start).getTime() - now.getTime()) / 60000;
+        if (diff > 0 && diff <= 15) notifs.push({ id: `s-${s.id}`, title: 'Upcoming Session', message: `"${s.taskTitle}" starts in ${Math.ceil(diff)} min`, time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), read: false });
       });
-
-      // 2. Check for deadline warnings (due within 24 hours)
-      tasks.forEach((task) => {
-        if (task.status === 'completed') return;
-        const dl = new Date(task.deadline + 'T23:59:59');
-        const diffMs = dl.getTime() - now.getTime();
-        const diffHours = diffMs / (1000 * 60 * 60);
-
-        if (diffHours > 0 && diffHours <= 24) {
-          currentNotifs.push({
-            id: `deadline-warning-${task.id}`,
-            title: 'Deadline Warning',
-            message: `"${task.title}" is due in ${Math.ceil(diffHours)} hours!`,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            read: false,
-          });
-        }
+      tasks.forEach(t => {
+        if (t.status === 'completed') return;
+        const diff = (new Date(t.deadline + 'T23:59:59').getTime() - now.getTime()) / 3600000;
+        if (diff > 0 && diff <= 24) notifs.push({ id: `d-${t.id}`, title: 'Deadline Warning', message: `"${t.title}" due in ${Math.ceil(diff)}h`, time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), read: false });
       });
-
-      if (currentNotifs.length > 0) {
-        setNotifications((prev) => {
-          // Avoid duplicate notification ids
-          const filtered = prev.filter((p) => !currentNotifs.some((c) => c.id === p.id));
-          return [...currentNotifs, ...filtered];
-        });
-      }
+      if (notifs.length) setNotifications(prev => [...notifs, ...prev.filter(p => !notifs.some(n => n.id === p.id))]);
     };
-
-    // Run immediately and every 2 minutes
-    runChecks();
-    const interval = setInterval(runChecks, 120000);
-    return () => clearInterval(interval);
+    check();
+    const iv = setInterval(check, 120000);
+    return () => clearInterval(iv);
   }, [user, tasks, sessions]);
 
   const loadUserData = async () => {
     if (!user) return;
-    try {
-      const fetchedPrefs = await dbService.getPreferences(user.uid);
-      const fetchedTasks = await dbService.getTasks(user.uid);
-      const fetchedEvents = await dbService.getEvents(user.uid);
-      const fetchedSessions = await dbService.getSessions(user.uid);
-
-      setPreferences(fetchedPrefs);
-      setTasks(fetchedTasks);
-      setEvents(fetchedEvents);
-
-      // Run scheduler with fresh loads if sessions are empty, else load stored ones
-      if (fetchedSessions.length === 0 && fetchedTasks.length > 0) {
-        const result = generateSchedule(fetchedTasks, fetchedEvents, fetchedPrefs);
-        await dbService.saveSessions(user.uid, result.sessions);
-        setSessions(result.sessions);
-        setConflictedTaskIds(result.conflictedTaskIds);
-      } else {
-        setSessions(fetchedSessions);
-        // Double check conflict markings based on current tasks
-        const result = generateSchedule(fetchedTasks, fetchedEvents, fetchedPrefs);
-        setConflictedTaskIds(result.conflictedTaskIds);
-      }
-    } catch (error) {
-      console.error('Error loading scheduler data:', error);
+    const [prefs, fetchedTasks, fetchedEvents, fetchedSessions, fetchedTodos] = await Promise.all([
+      dbService.getPreferences(user.uid),
+      dbService.getTasks(user.uid),
+      dbService.getEvents(user.uid),
+      dbService.getSessions(user.uid),
+      dbService.getTodos(user.uid, todayStr),
+    ]);
+    setPreferences(prefs);
+    setTasks(fetchedTasks);
+    setEvents(fetchedEvents);
+    setTodos(fetchedTodos);
+    if (fetchedSessions.length === 0 && fetchedTasks.length > 0) {
+      const r = generateSchedule(fetchedTasks, fetchedEvents, prefs);
+      await dbService.saveSessions(user.uid, r.sessions);
+      setSessions(r.sessions);
+      setConflictedTaskIds(r.conflictedTaskIds);
+    } else {
+      setSessions(fetchedSessions);
+      setConflictedTaskIds(generateSchedule(fetchedTasks, fetchedEvents, prefs).conflictedTaskIds);
     }
   };
 
-  const handleRecalculateSchedule = async (
-    updatedTasks: Task[],
-    updatedEvents: FixedEvent[],
-    updatedPrefs: UserPreferences,
-    isSilence: boolean = false
-  ) => {
+  const recalc = async (t: Task[], e: FixedEvent[], p: UserPreferences, silent = false) => {
     if (!user) return;
-    try {
-      const result = generateSchedule(updatedTasks, updatedEvents, updatedPrefs);
-      await dbService.saveSessions(user.uid, result.sessions);
-      
-      setSessions(result.sessions);
-      setConflictedTaskIds(result.conflictedTaskIds);
-
-      if (!isSilence) {
-        const newNotif: InAppNotification = {
-          id: `schedule-change-${Date.now()}`,
-          title: 'Schedule Updated',
-          message: 'Schedule recalculated.',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          read: false,
-        };
-        setNotifications((prev) => [newNotif, ...prev]);
-      }
-    } catch (error) {
-      console.error('Error recalculating schedule:', error);
-    }
+    const r = generateSchedule(t, e, p);
+    await dbService.saveSessions(user.uid, r.sessions);
+    setSessions(r.sessions);
+    setConflictedTaskIds(r.conflictedTaskIds);
+    if (!silent) setNotifications(prev => [{ id: `sc-${Date.now()}`, title: 'Schedule Updated', message: 'Schedule recalculated.', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), read: false }, ...prev]);
   };
 
-  // Auth Complete
-  const handleAuthSuccess = (profile: UserProfile) => {
-    setUser(profile);
-  };
-
-  // Logout
   const handleLogout = async () => {
     await dbService.logout();
-    setUser(null);
-    setTasks([]);
-    setEvents([]);
-    setSessions([]);
-    setPreferences(null);
-    setNotifications([]);
+    setUser(null); setTasks([]); setEvents([]); setSessions([]); setPreferences(null); setNotifications([]); setTodos([]);
   };
 
-  // Tasks operations handlers
   const handleAddTask = async (task: Omit<Task, 'id'>) => {
     if (!user || !preferences) return;
-    try {
-      const newTask = await dbService.addTask(user.uid, task);
-      const updatedTasks = [...tasks, newTask];
-      setTasks(updatedTasks);
-      await handleRecalculateSchedule(updatedTasks, events, preferences);
-    } catch (error) {
-      console.error('Failed to add task:', error);
-      const errNotif: InAppNotification = {
-        id: `error-${Date.now()}`,
-        title: 'Save Failed',
-        message: 'Could not save the new task. Please check your connection.',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        read: false,
-      };
-      setNotifications((prev) => [errNotif, ...prev]);
-    }
+    const t = await dbService.addTask(user.uid, task);
+    const updated = [...tasks, t];
+    setTasks(updated);
+    await recalc(updated, events, preferences);
   };
 
-  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+  const handleUpdateTask = async (id: string, updates: Partial<Task>) => {
     if (!user || !preferences) return;
-    try {
-      await dbService.updateTask(user.uid, taskId, updates);
-      const updatedTasks = tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t));
-      setTasks(updatedTasks);
-      
-      // If completing a task, regenerate to clean up scheduled hours
-      // Or if adjusting completed hours, regenerate to update target
-      await handleRecalculateSchedule(updatedTasks, events, preferences, true);
-    } catch (error) {
-      console.error('Failed to update task:', error);
-    }
+    await dbService.updateTask(user.uid, id, updates);
+    const updated = tasks.map(t => t.id === id ? { ...t, ...updates } : t);
+    setTasks(updated);
+    await recalc(updated, events, preferences, true);
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = async (id: string) => {
     if (!user || !preferences) return;
-    try {
-      await dbService.deleteTask(user.uid, taskId);
-      const updatedTasks = tasks.filter((t) => t.id !== taskId);
-      setTasks(updatedTasks);
-      await handleRecalculateSchedule(updatedTasks, events, preferences);
-    } catch (error) {
-      console.error('Failed to delete task:', error);
-    }
+    await dbService.deleteTask(user.uid, id);
+    const updated = tasks.filter(t => t.id !== id);
+    setTasks(updated);
+    await recalc(updated, events, preferences);
   };
 
-  // Events operations handlers
   const handleAddEvent = async (event: Omit<FixedEvent, 'id'>) => {
     if (!user || !preferences) return;
-    try {
-      const newEvent = await dbService.addEvent(user.uid, event);
-      const updatedEvents = [...events, newEvent];
-      setEvents(updatedEvents);
-      await handleRecalculateSchedule(tasks, updatedEvents, preferences);
-    } catch (error) {
-      console.error('Failed to add event:', error);
-    }
+    const e = await dbService.addEvent(user.uid, event);
+    const updated = [...events, e];
+    setEvents(updated);
+    await recalc(tasks, updated, preferences);
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
+  const handleUpdateEvent = async (id: string, updates: Partial<FixedEvent>) => {
     if (!user || !preferences) return;
-    try {
-      await dbService.deleteEvent(user.uid, eventId);
-      const updatedEvents = events.filter((e) => e.id !== eventId);
-      setEvents(updatedEvents);
-      await handleRecalculateSchedule(tasks, updatedEvents, preferences);
-    } catch (error) {
-      console.error('Failed to delete event:', error);
-    }
+    await dbService.updateEvent(user.uid, id, updates);
+    const updated = events.map(e => e.id === id ? { ...e, ...updates } : e);
+    setEvents(updated);
+    await recalc(tasks, updated, preferences, true);
   };
 
-  const handleUpdateEvent = async (eventId: string, updates: Partial<FixedEvent>) => {
+  const handleDeleteEvent = async (id: string) => {
     if (!user || !preferences) return;
-    try {
-      await dbService.updateEvent(user.uid, eventId, updates);
-      const updatedEvents = events.map((e) => (e.id === eventId ? { ...e, ...updates } : e));
-      setEvents(updatedEvents);
-      await handleRecalculateSchedule(tasks, updatedEvents, preferences, true);
-    } catch (error) {
-      console.error('Failed to update event:', error);
-    }
+    await dbService.deleteEvent(user.uid, id);
+    const updated = events.filter(e => e.id !== id);
+    setEvents(updated);
+    await recalc(tasks, updated, preferences);
   };
 
-  // Preferences handler
-  const handleSavePreferences = async (newPrefs: UserPreferences) => {
+  const handleSavePreferences = async (prefs: UserPreferences) => {
     if (!user) return;
-    try {
-      await dbService.savePreferences(user.uid, newPrefs);
-      setPreferences(newPrefs);
-      await handleRecalculateSchedule(tasks, events, newPrefs);
-    } catch (error) {
-      console.error('Failed to save preferences:', error);
-    }
+    await dbService.savePreferences(user.uid, prefs);
+    setPreferences(prefs);
+    await recalc(tasks, events, prefs);
   };
 
-  // Toggle study session completion
-  const handleToggleSessionComplete = async (
-    sessionId: string,
-    completed: boolean,
-    hours: number,
-    taskId: string
-  ) => {
+  const handleToggleSession = async (sessionId: string, completed: boolean, hours: number, taskId: string) => {
     if (!user || !preferences) return;
-    try {
-      await dbService.toggleSessionComplete(user.uid, sessionId, completed, hours, taskId);
-      
-      // Reload state after DB updates
-      const fetchedTasks = await dbService.getTasks(user.uid);
-      const fetchedSessions = await dbService.getSessions(user.uid);
-      setTasks(fetchedTasks);
-      setSessions(fetchedSessions);
-
-      // Run minor recalculation check
-      const result = generateSchedule(fetchedTasks, events, preferences);
-      setConflictedTaskIds(result.conflictedTaskIds);
-    } catch (error) {
-      console.error('Failed to toggle session:', error);
-    }
+    await dbService.toggleSessionComplete(user.uid, sessionId, completed, hours, taskId);
+    const [ft, fs] = await Promise.all([dbService.getTasks(user.uid), dbService.getSessions(user.uid)]);
+    setTasks(ft); setSessions(fs);
+    setConflictedTaskIds(generateSchedule(ft, events, preferences).conflictedTaskIds);
   };
 
-  // Clear data
-  const handleResetData = () => {
-    if (user) {
-      dbService.clearMockData();
-      loadUserData();
-    }
+  // Todo handlers
+  const handleAddTodo = async (text: string) => {
+    if (!user) return;
+    const todo = await dbService.addTodo(user.uid, text, todayStr);
+    setTodos(prev => [...prev, todo]);
+  };
+  const handleToggleTodo = async (id: string, done: boolean) => {
+    if (!user) return;
+    await dbService.toggleTodo(user.uid, id, done);
+    setTodos(prev => prev.map(t => t.id === id ? { ...t, done } : t));
+  };
+  const handleDeleteTodo = async (id: string) => {
+    if (!user) return;
+    await dbService.deleteTodo(user.uid, id);
+    setTodos(prev => prev.filter(t => t.id !== id));
+  };
+  const handleClearDoneTodos = async () => {
+    if (!user) return;
+    await dbService.clearDoneTodos(user.uid, todayStr);
+    setTodos(prev => prev.filter(t => !t.done));
   };
 
-  const markAllNotificationsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const unread = notifications.filter(n => !n.read).length;
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexGrow: 1, alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#080b11' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#080b11' }}>
         <div style={{ textAlign: 'center' }}>
           <CalendarDays className="logo-icon animate-pulse" size={48} />
           <h2 style={{ fontFamily: 'var(--font-display)', marginTop: '1rem', color: '#fff' }}>Loading...</h2>
@@ -338,145 +202,101 @@ function App() {
     );
   }
 
-  if (!user || !preferences) {
-    return <Auth onAuthSuccess={handleAuthSuccess} />;
-  }
+  if (!user || !preferences) return <Auth onAuthSuccess={setUser} />;
 
   return (
     <div className="app-container">
-      {/* Main Panel Content */}
       <main className="main-content" style={{ marginLeft: 0 }}>
-        {/* Header Bar */}
+
+        {/* Header */}
         <header className="header-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <CalendarDays className="logo-icon" size={28} />
-            <span className="logo-text" style={{ fontSize: '1.5rem' }}>Timetable4me</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <CalendarDays className="logo-icon" size={24} />
+            <span className="logo-text" style={{ fontSize: '1.25rem' }}>Timetable4me</span>
           </div>
 
           <div className="header-actions">
-            <button 
-              onClick={() => setCurrentView(currentView === 'dashboard' ? 'schedule' : 'dashboard')}
-              className="btn btn-secondary"
-              style={{ padding: '8px 16px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              <CalendarIcon size={18} />
-              <span>{currentView === 'dashboard' ? 'Full Schedule' : 'Dashboard'}</span>
+            <button onClick={() => setCurrentView(v => v === 'dashboard' ? 'schedule' : 'dashboard')}
+              className="btn btn-secondary header-schedule-btn"
+              style={{ padding: '7px 14px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
+              <CalendarIcon size={15} />
+              <span className="header-btn-label">{currentView === 'dashboard' ? 'Schedule' : 'Dashboard'}</span>
             </button>
 
-            {/* Notification Center */}
             <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => { setShowNotifPanel(!showNotifPanel); markAllNotificationsRead(); }}
-                className="btn btn-secondary"
-                style={{ padding: '10px', borderRadius: '50%', position: 'relative' }}
-              >
-                <Bell size={18} />
-                {unreadCount > 0 && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: '-2px',
-                      right: '-2px',
-                      backgroundColor: 'var(--danger)',
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                    }}
-                  />
-                )}
+              <button onClick={() => { setShowNotifPanel(p => !p); markAllRead(); }}
+                className="btn btn-secondary" style={{ padding: '8px', borderRadius: '50%', position: 'relative' }}>
+                <Bell size={17} />
+                {unread > 0 && <span style={{ position: 'absolute', top: '-2px', right: '-2px', backgroundColor: 'var(--primary)', width: '8px', height: '8px', borderRadius: '50%' }} />}
               </button>
 
               {showNotifPanel && (
                 <div className="notifications-panel">
                   <div className="notification-header">
                     <span>Notifications</span>
-                    <button
-                      onClick={() => setShowNotifPanel(false)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                    >
-                      <X size={16} />
-                    </button>
+                    <button onClick={() => setShowNotifPanel(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={16} /></button>
                   </div>
                   <div className="notification-list">
-                    {notifications.length === 0 ? (
-                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        No notifications.
-                      </div>
-                    ) : (
-                      notifications.map((notif) => (
-                        <div key={notif.id} className={`notification-item ${!notif.read ? 'unread' : ''}`}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                            <span style={{ color: '#fff' }}>{notif.title}</span>
-                            <span className="notification-time">{notif.time}</span>
+                    {notifications.length === 0
+                      ? <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No notifications.</div>
+                      : notifications.map(n => (
+                          <div key={n.id} className={`notification-item ${!n.read ? 'unread' : ''}`}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                              <span style={{ color: '#fff' }}>{n.title}</span>
+                              <span className="notification-time">{n.time}</span>
+                            </div>
+                            <span style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>{n.message}</span>
                           </div>
-                          <span style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>{notif.message}</span>
-                        </div>
-                      ))
-                    )}
+                        ))
+                    }
                   </div>
                 </div>
               )}
             </div>
 
             <div className="user-badge" style={{ padding: '4px 8px', gap: '0.5rem' }}>
-              <div className="avatar" style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}>
-                {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
-              </div>
-              <div className="user-info" style={{ display: 'none' }}> {/* Hidden on small screens, can be shown via media queries */}
-                <div className="user-name" style={{ fontSize: '0.75rem' }}>{user.displayName || 'User'}</div>
+              <div className="avatar" style={{ width: '28px', height: '28px', fontSize: '0.75rem' }}>
+                {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
               </div>
               <button onClick={handleLogout} className="btn" style={{ padding: '4px', color: 'var(--text-secondary)' }}>
-                <LogOut size={16} />
+                <LogOut size={15} />
               </button>
             </div>
           </div>
         </header>
 
-        {/* Master Dashboard View */}
         {currentView === 'dashboard' ? (
           <Dashboard
-            tasks={tasks}
-            events={events}
-            sessions={sessions}
-            onToggleSession={handleToggleSessionComplete}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-            onUpdateEvent={handleUpdateEvent}
-            onDeleteEvent={handleDeleteEvent}
+            tasks={tasks} events={events} sessions={sessions} todos={todos}
+            onToggleSession={handleToggleSession}
+            onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask}
+            onUpdateEvent={handleUpdateEvent} onDeleteEvent={handleDeleteEvent}
+            onAddTodo={handleAddTodo} onToggleTodo={handleToggleTodo}
+            onDeleteTodo={handleDeleteTodo} onClearDoneTodos={handleClearDoneTodos}
             onOpenManager={() => setShowManager(true)}
             onOpenSchedule={() => setCurrentView('schedule')}
           />
         ) : (
-          <ScheduleView 
-            tasks={tasks}
-            events={events}
-            sessions={sessions}
+          <ScheduleView
+            tasks={tasks} events={events} sessions={sessions}
             onBack={() => setCurrentView('dashboard')}
             onOpenManager={() => setShowManager(true)}
-            onDeleteTask={handleDeleteTask}
-            onDeleteEvent={handleDeleteEvent}
+            onDeleteTask={handleDeleteTask} onDeleteEvent={handleDeleteEvent}
           />
         )}
 
         {showManager && (
           <ScheduleManager
-            tasks={tasks}
-            events={events}
-            preferences={preferences!}
-            conflictedTaskIds={conflictedTaskIds}
-            initialItem={editingItem}
-            onAddTask={handleAddTask}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-            onAddEvent={handleAddEvent}
-            onUpdateEvent={handleUpdateEvent}
-            onDeleteEvent={handleDeleteEvent}
-            onSavePreferences={handleSavePreferences}
-            onResetData={handleResetData}
-            onClose={() => { setShowManager(false); setEditingItem(null); }}
+            tasks={tasks} events={events} preferences={preferences!}
+            conflictedTaskIds={conflictedTaskIds} initialItem={editingItem}
+            onAddTask={handleAddTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask}
+            onAddEvent={handleAddEvent} onUpdateEvent={handleUpdateEvent} onDeleteEvent={handleDeleteEvent}
+            onSavePreferences={handleSavePreferences} onResetData={() => {}}
+            onClose={() => setShowManager(false)}
           />
         )}
-        <footer style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.75rem', borderTop: '1px solid var(--border)' }}>
+
+        <footer style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.72rem', borderTop: '1px solid var(--border-color)', marginTop: '2rem' }}>
           Built by{' '}
           <a href="https://github.com/amrlhakimii" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>amrlhakimii</a>
           {' & '}
