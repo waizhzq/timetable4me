@@ -205,7 +205,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* 1. SCHEDULE QUICK LINK */}
       <div className="card" style={{ 
         padding: '2rem', 
-        background: 'linear-gradient(135deg, var(--accent) 0%, #FFD400 100%)',
+        background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
         border: 'none',
         display: 'flex',
         flexDirection: 'column',
@@ -213,26 +213,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
         textAlign: 'center',
         gap: '1.25rem'
       }}>
-        <div style={{ backgroundColor: '#000', padding: '1.25rem', borderRadius: '50%', color: 'var(--accent)', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
+        <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '1.25rem', borderRadius: '50%', color: '#fff', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
           <Calendar size={40} style={{ color: 'inherit' }} />
         </div>
-        <div style={{ color: '#000' }}>
-          <h2 style={{ color: '#000', marginBottom: '0.5rem', background: 'none', WebkitTextFillColor: 'initial', fontSize: '1.75rem' }}>Your Weekly Plan</h2>
-          <p style={{ color: 'rgba(0,0,0,0.7)', fontSize: '1rem', maxWidth: '400px' }}>Access your personalized schedule, manage classes, and track your study progress in the new interactive view.</p>
+        <div style={{ color: '#fff' }}>
+          <h2 style={{ color: '#fff', marginBottom: '0.5rem', background: 'none', WebkitTextFillColor: 'initial', fontSize: '1.75rem' }}>Your Weekly Plan</h2>
+          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '1rem', maxWidth: '400px' }}>Access your personalized schedule, manage classes, and track your study progress in the new interactive view.</p>
         </div>
         <button onClick={onOpenSchedule} className="btn" style={{ 
-          backgroundColor: '#000', 
-          color: 'var(--accent)', 
+          backgroundColor: '#fff', 
+          color: 'var(--primary)', 
           padding: '1rem 2.5rem',
           fontWeight: 800,
           borderRadius: '16px',
           fontSize: '1.1rem',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
         }}>
           OPEN FULL SCHEDULE
         </button>
       </div>
-
       {/* 2. INSPECTOR */}
       {selectedBlock && inspectorDetails && (
         <div className="card" style={{ border: `1.5px solid ${inspectorDetails.color}`, animation: 'fadeIn 0.2s ease-out' }}>

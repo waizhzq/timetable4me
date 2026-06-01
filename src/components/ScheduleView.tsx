@@ -78,7 +78,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     }}>
       {/* Header */}
       <header style={{ 
-        backgroundColor: 'var(--accent)', 
+        backgroundColor: 'var(--primary)', 
         padding: '1.5rem 1rem', 
         display: 'flex', 
         alignItems: 'center',
@@ -92,14 +92,14 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           background: 'none', 
           border: 'none', 
           cursor: 'pointer',
-          color: '#000'
+          color: '#fff'
         }}>
           <ArrowLeft size={24} />
         </button>
         <h1 style={{ 
           fontSize: '1.25rem', 
           margin: 0, 
-          color: '#000',
+          color: '#fff',
           background: 'none',
           WebkitTextFillColor: 'initial',
           fontWeight: 700
