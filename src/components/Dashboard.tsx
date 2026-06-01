@@ -14,7 +14,7 @@ const DAY_START  = 7;
 const DAY_END    = 23;
 
 const COLOR_IDLE  = 'rgba(255,255,255,0.18)';
-const COLOR_WORK  = '#4ade80';
+const COLOR_WORK  = '#EA5455';
 const COLOR_BREAK = '#60a5fa';
 const COLOR_DONE  = '#ffffff';
 
