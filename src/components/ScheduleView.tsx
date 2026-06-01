@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Task, FixedEvent, StudySession } from '../services/db';
+import type { FixedEvent, StudySession } from '../services/db';
 import { 
   ArrowLeft, 
   Plus, 
