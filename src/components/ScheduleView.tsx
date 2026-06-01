@@ -64,8 +64,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
       display: 'flex', 
       flexDirection: 'column', 
       height: '100vh', 
-      backgroundColor: '#fff', // White background as in image
-      color: '#000',
+      backgroundColor: 'var(--bg-app)', 
+      color: 'var(--text-primary)',
       position: 'fixed',
       top: 0,
       left: 0,
@@ -81,7 +81,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         display: 'flex', 
         alignItems: 'center',
         justifyContent: 'center',
-        position: 'relative'
+        position: 'relative',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
       }}>
         <button onClick={onBack} style={{ 
           position: 'absolute', 
@@ -99,7 +100,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           color: '#000',
           background: 'none',
           WebkitTextFillColor: 'initial',
-          fontWeight: 600
+          fontWeight: 700
         }}>Schedule</h1>
       </header>
 
@@ -109,8 +110,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         display: 'flex', 
         gap: '0.5rem', 
         overflowX: 'auto',
-        backgroundColor: '#fff',
-        borderBottom: '1px solid #eee'
+        backgroundColor: 'var(--bg-sidebar)',
+        borderBottom: '1px solid var(--border-color)'
       }} className="no-scrollbar">
         {days.map((day, idx) => (
           <button 
@@ -118,14 +119,15 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             onClick={() => setSelectedDayIdx(idx)}
             style={{
               padding: '0.75rem 1rem',
-              borderRadius: '8px',
+              borderRadius: '12px',
               border: 'none',
-              backgroundColor: selectedDayIdx === idx ? 'var(--info)' : '#f0f0f0',
-              color: selectedDayIdx === idx ? '#fff' : '#888',
-              fontWeight: 600,
-              minWidth: '60px',
+              backgroundColor: selectedDayIdx === idx ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+              color: selectedDayIdx === idx ? '#fff' : 'var(--text-secondary)',
+              fontWeight: 700,
+              minWidth: '65px',
               cursor: 'pointer',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              boxShadow: selectedDayIdx === idx ? 'var(--shadow-glow)' : 'none'
             }}
           >
             {day}
@@ -134,99 +136,104 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: 'var(--bg-app)' }}>
         {dayEvents.length === 0 && daySessions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
-            <BookOpen size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-            <p>No classes or tasks scheduled for {selectedDayName}.</p>
+          <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-muted)' }}>
+            <BookOpen size={64} style={{ marginBottom: '1.5rem', opacity: 0.2 }} />
+            <p style={{ fontSize: '1.1rem' }}>No classes or tasks scheduled for {selectedDayName}.</p>
           </div>
         ) : (
           <>
             {dayEvents.map(event => (
               <div key={event.id} className="schedule-card" style={{
-                backgroundColor: '#fff',
-                borderRadius: '12px',
-                padding: '1.25rem',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                border: '1px solid #f0f0f0',
-                position: 'relative'
+                backgroundColor: 'var(--bg-sidebar)',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                boxShadow: 'var(--shadow-md)',
+                border: '1px solid var(--border-color)',
+                position: 'relative',
+                borderLeft: `4px solid ${event.color || 'var(--secondary)'}`
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem', color: '#000', fontWeight: 700 }}>{event.title.toUpperCase()}</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '0.02em' }}>{event.title.toUpperCase()}</h3>
                   <button 
                     onClick={() => handleDelete('event', event.id)}
-                    style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.7 }}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
                 
-                <div style={{ color: '#666', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
-                  {event.notes ? event.notes : (event.customType || event.type)}
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 500 }}>
+                  {event.notes ? event.notes.split('\n')[0] : (event.customType || event.type)}
                 </div>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '0.5rem' }}>
-                  <div style={{ color: '#888', fontSize: '0.85rem' }}>
-                    {/* Placeholder for location if not in notes */}
-                    {event.notes && event.notes.includes('\n') ? event.notes.split('\n')[1] : ''}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {/* Simplified metadata */}
+                    <span>{event.notes && event.notes.includes('\n') ? event.notes.split('\n')[1] : (event.customType || event.type)}</span>
                   </div>
-                  <div style={{ fontWeight: 600, color: '#000', fontSize: '0.9rem' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
                     {event.startTime} - {event.endTime}
                   </div>
                 </div>
               </div>
             ))}
 
-            {daySessions.map(session => (
-              <div key={session.id} className="schedule-card" style={{
-                backgroundColor: '#fff',
-                borderRadius: '12px',
-                padding: '1.25rem',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                border: '1px solid #f0f0f0',
-                borderLeft: '4px solid var(--primary)',
-                position: 'relative'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem', color: '#000', fontWeight: 700 }}>{session.taskTitle.toUpperCase()}</h3>
-                  <button 
-                    onClick={() => handleDelete('session', session.id)}
-                    style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-                
-                <div style={{ color: '#666', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
-                  Study Session
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '0.5rem' }}>
-                  <div style={{ color: '#888', fontSize: '0.85rem' }}>
-                    Scheduled Task
+            {daySessions.map(session => {
+              const task = tasks.find(t => t.id === session.taskId);
+              const taskColor = task?.color || 'var(--primary)';
+              return (
+                <div key={session.id} className="schedule-card" style={{
+                  backgroundColor: 'var(--bg-sidebar)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  boxShadow: 'var(--shadow-md)',
+                  border: '1px solid var(--border-color)',
+                  borderLeft: `4px solid ${taskColor}`,
+                  position: 'relative'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '0.02em' }}>{session.taskTitle.toUpperCase()}</h3>
+                    <button 
+                      onClick={() => handleDelete('session', session.id)}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.7 }}
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
-                  <div style={{ fontWeight: 600, color: '#000', fontSize: '0.9rem' }}>
-                    {new Date(session.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(session.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 500 }}>
+                    Study Session • {task?.category || 'General'}
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      Scheduled Productivity
+                    </div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem', backgroundColor: 'rgba(255,255,255,0.03)', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+                      {new Date(session.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} - {new Date(session.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </>
         )}
       </div>
 
       {/* Footer / Add Button */}
       <footer style={{ 
-        padding: '1.25rem', 
-        backgroundColor: '#fff', 
-        borderTop: '1px solid #eee',
+        padding: '1.5rem', 
+        backgroundColor: 'var(--bg-sidebar)', 
+        borderTop: '1px solid var(--border-color)',
         display: 'flex',
         justifyContent: 'center'
       }}>
         <button 
           onClick={onOpenManager}
           style={{ 
-            backgroundColor: 'var(--info)', 
+            background: 'linear-gradient(135deg, var(--primary), #a78bfa)', 
             color: '#fff', 
             border: 'none', 
             borderRadius: '16px', 
@@ -238,7 +245,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             gap: '0.75rem',
             width: '100%',
             justifyContent: 'center',
-            boxShadow: '0 6px 16px rgba(59, 130, 246, 0.4)'
+            boxShadow: 'var(--shadow-glow)'
           }}
         >
           <Plus size={24} strokeWidth={3} />
@@ -246,8 +253,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         </button>
       </footer>
 
-      {/* Blue bar at the very bottom as in image */}
-      <div style={{ height: '40px', backgroundColor: 'var(--info)', width: '100%' }}></div>
+      {/* Accent bar at the very bottom */}
+      <div style={{ height: '30px', backgroundColor: 'var(--bg-app)', width: '100%', borderTop: '1px solid var(--border-color)' }}></div>
     </div>
   );
 };
