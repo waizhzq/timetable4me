@@ -4,11 +4,14 @@ import type { Task, FixedEvent, StudySession, UserPreferences, UserProfile } fro
 import { generateSchedule } from './services/scheduler';
 import { Auth } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
+import { ScheduleView } from './components/ScheduleView';
+import { ScheduleManager } from './components/ScheduleManager';
 import {
   Bell,
   LogOut,
   X,
-  CalendarDays
+  CalendarDays,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 
 interface InAppNotification {
@@ -22,6 +25,7 @@ interface InAppNotification {
 function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'schedule'>('dashboard');
 
   // Core Data States
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -29,6 +33,10 @@ function App() {
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [conflictedTaskIds, setConflictedTaskIds] = useState<string[]>([]);
+
+  // UI States
+  const [showManager, setShowManager] = useState(false);
+  const [editingItem, setEditingItem] = useState<{ type: 'task' | 'event', id: string } | null>(null);
 
   // Notifications
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
@@ -346,6 +354,15 @@ function App() {
           </div>
 
           <div className="header-actions">
+            <button 
+              onClick={() => setCurrentView(currentView === 'dashboard' ? 'schedule' : 'dashboard')}
+              className="btn btn-secondary"
+              style={{ padding: '8px 16px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <CalendarIcon size={18} />
+              <span>{currentView === 'dashboard' ? 'Full Schedule' : 'Dashboard'}</span>
+            </button>
+
             {/* Notification Center */}
             <div style={{ position: 'relative' }}>
               <button
@@ -416,22 +433,56 @@ function App() {
         </header>
 
         {/* Master Dashboard View */}
-        <Dashboard
-          tasks={tasks}
-          events={events}
-          sessions={sessions}
-          preferences={preferences}
-          conflictedTaskIds={conflictedTaskIds}
-          onToggleSession={handleToggleSessionComplete}
-          onUpdateTask={handleUpdateTask}
-          onDeleteTask={handleDeleteTask}
-          onAddTask={handleAddTask}
-          onAddEvent={handleAddEvent}
-          onUpdateEvent={handleUpdateEvent}
-          onDeleteEvent={handleDeleteEvent}
-          onSavePreferences={handleSavePreferences}
-          onResetData={handleResetData}
-        />
+        {currentView === 'dashboard' ? (
+          <Dashboard
+            tasks={tasks}
+            events={events}
+            sessions={sessions}
+            preferences={preferences}
+            conflictedTaskIds={conflictedTaskIds}
+            onToggleSession={handleToggleSessionComplete}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+            onAddTask={handleAddTask}
+            onAddEvent={handleAddEvent}
+            onUpdateEvent={handleUpdateEvent}
+            onDeleteEvent={handleDeleteEvent}
+            onSavePreferences={handleSavePreferences}
+            onResetData={handleResetData}
+            onOpenManager={() => setShowManager(true)}
+            onOpenSchedule={() => setCurrentView('schedule')}
+          />
+        ) : (
+          <ScheduleView 
+            tasks={tasks}
+            events={events}
+            sessions={sessions}
+            onBack={() => setCurrentView('dashboard')}
+            onAddTask={() => setShowManager(true)}
+            onAddEvent={() => setShowManager(true)}
+            onDeleteTask={handleDeleteTask}
+            onDeleteEvent={handleDeleteEvent}
+          />
+        )}
+
+        {showManager && (
+          <ScheduleManager
+            tasks={tasks}
+            events={events}
+            preferences={preferences!}
+            conflictedTaskIds={conflictedTaskIds}
+            initialItem={editingItem}
+            onAddTask={handleAddTask}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+            onAddEvent={handleAddEvent}
+            onUpdateEvent={handleUpdateEvent}
+            onDeleteEvent={handleDeleteEvent}
+            onSavePreferences={handleSavePreferences}
+            onResetData={handleResetData}
+            onClose={() => { setShowManager(false); setEditingItem(null); }}
+          />
+        )}
       </main>
     </div>
   );

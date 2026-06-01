@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import type { Task, FixedEvent, StudySession, UserPreferences } from '../services/db';
 import { calculatePriorityScore } from '../services/scheduler';
-import { ScheduleManager } from './ScheduleManager';
 import {
   Calendar,
   Clock,
@@ -34,6 +33,8 @@ interface DashboardProps {
   onDeleteEvent: (eventId: string) => Promise<void>;
   onSavePreferences: (newPrefs: UserPreferences) => Promise<void>;
   onResetData: () => void;
+  onOpenManager: () => void;
+  onOpenSchedule: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -51,6 +52,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteEvent,
   onSavePreferences,
   onResetData,
+  onOpenManager,
+  onOpenSchedule,
 }) => {
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
@@ -64,15 +67,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     'Saturday',
   ][now.getDay()];
 
-  // State for Management Modal
-  const [showManager, setShowManager] = useState(false);
-  const [editingItem, setEditingItem] = useState<{ type: 'task' | 'event', id: string } | null>(null);
-
   // Active Selected Block state for Inspector
   const [selectedBlock, setSelectedBlock] = useState<{
     type: 'study' | 'fixed';
-    id: string; // session id or fixed event id
-    dbId: string; // task id or fixed event id
+    id: string; 
+    dbId: string; 
     title: string;
     category: string;
     start: string;
@@ -84,68 +83,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [noteText, setNoteText] = useState('');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
 
-  // ----------------------------------------------------
-  // Date Helpers
-  // ----------------------------------------------------
   const formatDateDDMMYY = (dateStr?: string) => {
     if (!dateStr) return 'No Date';
     const [y, m, d] = dateStr.split('-');
     return `${d}/${m}/${y.slice(-2)}`;
   };
 
-  const getSunday = (d: Date): Date => {
-    const date = new Date(d.getTime());
-    const day = date.getDay();
-    const diff = date.getDate() - day;
-    const sunday = new Date(date.setDate(diff));
-    sunday.setHours(0, 0, 0, 0);
-    return sunday;
-  };
-
-  const sundayDate = getSunday(now);
-  const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
-
-  const weekDates = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(sundayDate.getTime());
-    d.setDate(sundayDate.getDate() + i);
-    return d;
-  });
-
-  // ----------------------------------------------------
-  // Dynamic Hour Range Calculation
-  // ----------------------------------------------------
-  const timeToDecimal = (t: string) => {
-    const [h, m] = t.split(':').map(Number);
-    return h + m / 60;
-  };
-
-  let minHour = 8;
-  let maxHour = 18;
-
-  events.forEach(e => {
-    const start = Math.floor(timeToDecimal(e.startTime));
-    const end = Math.ceil(timeToDecimal(e.endTime));
-    if (start < minHour) minHour = start;
-    if (end > maxHour) maxHour = end;
-  });
-
-  sessions.forEach(s => {
-    const sDate = s.start.split('T')[0];
-    const isThisWeek = weekDates.some(d => d.toISOString().split('T')[0] === sDate);
-    if (isThisWeek) {
-      const start = new Date(s.start).getHours();
-      const end = Math.ceil(new Date(s.end).getHours() + new Date(s.end).getMinutes() / 60);
-      if (start < minHour) minHour = start;
-      if (end > maxHour) maxHour = end;
-    }
-  });
-
-  const hours = Array.from({ length: maxHour - minHour }).map((_, i) => minHour + i);
-
-  // ----------------------------------------------------
-  // Helpers
-  // ----------------------------------------------------
   const getPriorityEmoji = (p: string) => {
     if (p === 'high') return '🔥';
     if (p === 'medium') return '💓';
@@ -163,22 +106,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // ----------------------------------------------------
-  // Inspector Details
-  // ----------------------------------------------------
-  let inspectorDetails: {
-    title: string;
-    type: 'study' | 'fixed';
-    category: string;
-    timeRange: string;
-    priority?: string;
-    deadline?: string;
-    notes: string;
-    subtasks: { id: string; text: string; completed: boolean }[];
-    isOverdue?: boolean;
-    color: string;
-  } | null = null;
-
+  let inspectorDetails: any = null;
   if (selectedBlock) {
     if (selectedBlock.type === 'fixed') {
       const matchedEvent = events.find((e) => e.id === selectedBlock.dbId);
@@ -201,19 +129,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
         const eTime = new Date(matchedSession.end);
         const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
         const timeRangeStr = `${sTime.toLocaleDateString([], { month: 'short', day: 'numeric' })} • ${sTime.toLocaleTimeString([], options)} - ${eTime.toLocaleTimeString([], options)}`;
-
-        const isOverdue = matchedTask.hasDeadline && matchedTask.deadline && new Date(matchedTask.deadline + 'T23:59:59').getTime() < now.getTime() && matchedTask.status !== 'completed';
-
         inspectorDetails = {
           title: matchedTask.title,
           type: 'study',
-          category: matchedTask.category === 'other' ? matchedTask.customCategory || 'Task' : matchedTask.category,
+          category: matchedTask.category,
           timeRange: timeRangeStr,
           priority: matchedTask.priority,
           deadline: matchedTask.hasDeadline ? formatDateDDMMYY(matchedTask.deadline) : 'No Deadline',
           notes: matchedTask.notes || 'No notes added.',
           subtasks: matchedTask.subtasks || [],
-          isOverdue: !!isOverdue,
           color: matchedTask.color,
         };
       }
@@ -249,27 +173,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleDeleteSelectedItem = async () => {
     if (!selectedBlock) return;
     if (!window.confirm(`Delete this ${selectedBlock.type === 'study' ? 'task' : 'class'}?`)) return;
-
-    if (selectedBlock.type === 'study') {
-      await onDeleteTask(selectedBlock.dbId);
-    } else {
-      await onDeleteEvent(selectedBlock.dbId);
-    }
+    if (selectedBlock.type === 'study') await onDeleteTask(selectedBlock.dbId);
+    else await onDeleteEvent(selectedBlock.dbId);
     setSelectedBlock(null);
   };
 
-  const handleEditSelectedItem = () => {
-    if (!selectedBlock) return;
-    setEditingItem({
-      type: selectedBlock.type === 'study' ? 'task' : 'event',
-      id: selectedBlock.dbId
-    });
-    setShowManager(true);
-  };
-
-  // ----------------------------------------------------
-  // Dashboard Calculations
-  // ----------------------------------------------------
   const activeTasks = tasks
     .filter((t) => t.status !== 'completed' && t.completedHours < t.estimatedHours)
     .map((t) => ({
@@ -307,95 +215,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '100%', overflowX: 'hidden' }}>
       
-      {/* 1. WEEKLY SCHEDULE */}
-      <div className="card" style={{ padding: '1.25rem' }}>
-        <div className="card-title" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Calendar className="logo-icon" size={20} />
-            <h3>Weekly Timetable</h3>
-          </div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            {formatDateDDMMYY(weekDates[0].toISOString().split('T')[0])} - {formatDateDDMMYY(weekDates[6].toISOString().split('T')[0])}
-          </span>
+      {/* 1. SCHEDULE QUICK LINK */}
+      <div className="card" style={{ 
+        padding: '2rem', 
+        background: 'linear-gradient(135deg, var(--accent) 0%, #FFD400 100%)',
+        border: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: '1.25rem'
+      }}>
+        <div style={{ backgroundColor: '#000', padding: '1.25rem', borderRadius: '50%', color: 'var(--accent)', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
+          <Calendar size={40} style={{ color: 'inherit' }} />
         </div>
-
-        <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '50px repeat(7, minmax(110px, 1fr))', border: '1px solid var(--border-color)', borderRadius: '10px', minWidth: '800px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
-            <div style={{ borderBottom: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }} />
-            {weekDates.map((date, idx) => {
-              const isToday = date.toDateString() === now.toDateString();
-              return (
-                <div key={idx} style={{ padding: '10px 4px', textAlign: 'center', borderBottom: '1px solid var(--border-color)', borderRight: idx === 6 ? 'none' : '1px solid var(--border-color)', backgroundColor: isToday ? 'var(--primary-glow)' : 'transparent' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: isToday ? 'var(--primary)' : '#fff' }}>{DAYS_SHORT[idx]}</div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{date.getDate()}</div>
-                </div>
-              );
-            })}
-
-            {hours.map((hour) => (
-              <React.Fragment key={hour}>
-                <div style={{ padding: '6px 4px', textAlign: 'right', fontSize: '0.65rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>{hour}:00</div>
-                {weekDates.map((date, dayIdx) => {
-                  const dateStr = date.toISOString().split('T')[0];
-                  const dayName = DAYS_FULL[date.getDay()];
-
-                  const matchedFixed = events.find(e => {
-                    const startDec = timeToDecimal(e.startTime);
-                    return (e.recurring ? e.day === dayName : e.date === dateStr) && Math.floor(startDec) === hour;
-                  });
-
-                  const matchedStudy = sessions.find(s => {
-                    if (!s.start.startsWith(dateStr)) return false;
-                    return new Date(s.start).getHours() === hour;
-                  });
-
-                  const isCovered = events.some(e => {
-                    if (!(e.recurring ? e.day === dayName : e.date === dateStr)) return false;
-                    return hour > Math.floor(timeToDecimal(e.startTime)) && hour < timeToDecimal(e.endTime);
-                  }) || sessions.some(s => {
-                    if (!s.start.startsWith(dateStr)) return false;
-                    return hour > new Date(s.start).getHours() && hour < new Date(s.end).getHours();
-                  });
-
-                  if (isCovered) return <div key={dayIdx} style={{ borderBottom: '1px solid var(--border-color)', borderRight: dayIdx === 6 ? 'none' : '1px solid var(--border-color)' }} />;
-
-                  return (
-                    <div key={dayIdx} style={{ borderBottom: '1px solid var(--border-color)', borderRight: dayIdx === 6 ? 'none' : '1px solid var(--border-color)', position: 'relative' }}>
-                      {matchedFixed && (
-                        <div
-                          onClick={() => setSelectedBlock({ type: 'fixed', id: matchedFixed.id, dbId: matchedFixed.id, title: matchedFixed.title, category: matchedFixed.type, start: matchedFixed.startTime, end: matchedFixed.endTime, completed: false })}
-                          style={{
-                            position: 'absolute', top: '1px', left: '1px', right: '1px', zIndex: 10, borderRadius: '4px', padding: '2px 4px', fontSize: '0.6rem', fontWeight: 600, cursor: 'pointer', overflow: 'hidden', height: `${(timeToDecimal(matchedFixed.endTime) - timeToDecimal(matchedFixed.startTime)) * 42 - 2}px`,
-                            backgroundColor: `${matchedFixed.color}33`, border: `1px solid ${matchedFixed.color}`, color: matchedFixed.color
-                          }}
-                        >
-                          {matchedFixed.title}
-                        </div>
-                      )}
-                      {matchedStudy && (
-                        <div
-                          onClick={() => setSelectedBlock({ type: 'study', id: matchedStudy.id, dbId: matchedStudy.taskId, title: matchedStudy.taskTitle, category: 'study block', start: matchedStudy.start, end: matchedStudy.end, completed: matchedStudy.completed })}
-                          style={{
-                            position: 'absolute', top: '1px', left: '1px', right: '1px', zIndex: 10, borderRadius: '4px', padding: '2px 4px', fontSize: '0.6rem', fontWeight: 600, cursor: 'pointer', overflow: 'hidden', height: `${(new Date(matchedStudy.end).getHours() - new Date(matchedStudy.start).getHours()) * 42 - 2}px`,
-                            backgroundColor: matchedStudy.completed ? 'rgba(16, 185, 129, 0.1)' : `${(tasks.find(t => t.id === matchedStudy.taskId)?.color || '#FF0052')}22`,
-                            border: matchedStudy.completed ? '1px solid #10b981' : `1px dashed ${tasks.find(t => t.id === matchedStudy.taskId)?.color || 'var(--primary)'}`,
-                            color: matchedStudy.completed ? '#a7f3d0' : (tasks.find(t => t.id === matchedStudy.taskId)?.color || '#ffcdcd'),
-                            textDecoration: matchedStudy.completed ? 'line-through' : 'none'
-                          }}
-                        >
-                          {getCategoryEmoji(tasks.find(t => t.id === matchedStudy.taskId)?.category || 'other')} {matchedStudy.taskTitle}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
+        <div style={{ color: '#000' }}>
+          <h2 style={{ color: '#000', marginBottom: '0.5rem', background: 'none', WebkitTextFillColor: 'initial', fontSize: '1.75rem' }}>Your Weekly Plan</h2>
+          <p style={{ color: 'rgba(0,0,0,0.7)', fontSize: '1rem', maxWidth: '400px' }}>Access your personalized schedule, manage classes, and track your study progress in the new interactive view.</p>
         </div>
-
-        <button onClick={() => setShowManager(true)} className="btn btn-primary" style={{ width: '100%', marginTop: '1.25rem', padding: '1rem', display: 'flex', gap: '0.6rem', fontWeight: 700, fontSize: '1rem' }}>
-          <PlusCircle size={20} /><span>Manage Tasks & Classes</span>
+        <button onClick={onOpenSchedule} className="btn" style={{ 
+          backgroundColor: '#000', 
+          color: 'var(--accent)', 
+          padding: '1rem 2.5rem',
+          fontWeight: 800,
+          borderRadius: '16px',
+          fontSize: '1.1rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+        }}>
+          OPEN FULL SCHEDULE
         </button>
       </div>
 
@@ -423,7 +270,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <button onClick={handleEditSelectedItem} className="btn btn-primary" style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}>Edit Details</button>
+              <button onClick={() => onOpenManager()} className="btn btn-primary" style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}>Edit Details</button>
               <button onClick={handleDeleteSelectedItem} className="btn btn-danger" style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}>Delete Item</button>
             </div>
 
@@ -431,7 +278,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: '#fff', marginBottom: '0.75rem' }}><CheckSquare size={16} /><span>Checklist</span></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {inspectorDetails.subtasks.map(st => (
+                  {inspectorDetails.subtasks.map((st: any) => (
                     <div key={st.id} onClick={() => handleToggleSubtask(st.id)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem', cursor: 'pointer', padding: '4px' }}>
                       {st.completed ? <CheckSquare size={18} color="var(--success)" /> : <Square size={18} color="var(--text-muted)" />}
                       <span style={{ textDecoration: st.completed ? 'line-through' : 'none', color: st.completed ? 'var(--text-muted)' : '#fff' }}>{st.text}</span>
@@ -448,7 +295,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* 3. TODAY'S TIMELINE */}
+      {/* 3. TODAY'S SCHEDULE */}
       <div className="card">
         <div className="card-title" style={{ justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -522,25 +369,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
-
-      {showManager && (
-        <ScheduleManager
-          tasks={tasks}
-          events={events}
-          preferences={preferences}
-          conflictedTaskIds={conflictedTaskIds}
-          initialItem={editingItem}
-          onAddTask={onAddTask}
-          onUpdateTask={onUpdateTask}
-          onDeleteTask={onDeleteTask}
-          onAddEvent={onAddEvent}
-          onUpdateEvent={onUpdateEvent}
-          onDeleteEvent={onDeleteEvent}
-          onSavePreferences={onSavePreferences}
-          onResetData={onResetData}
-          onClose={() => { setShowManager(false); setEditingItem(null); }}
-        />
-      )}
     </div>
   );
 };

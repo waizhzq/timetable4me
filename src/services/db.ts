@@ -179,7 +179,7 @@ const cleanData = (obj: any) => {
 export const dbService = {
   // Check if we are running in Firebase mode or Mock mode
   isFirebaseMode(): boolean {
-    return isFirebaseConfigured && fbAuth !== null && fbAuth.currentUser !== null;
+    return isFirebaseConfigured && fbAuth !== null;
   },
 
   // Auth Operations
