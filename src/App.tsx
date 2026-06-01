@@ -163,8 +163,8 @@ function App() {
       if (!isSilence) {
         const newNotif: InAppNotification = {
           id: `schedule-change-${Date.now()}`,
-          title: 'Schedule Regenerated',
-          message: 'Calendar slots recalculated based on your latest updates.',
+          title: 'Schedule Updated',
+          message: 'Schedule recalculated.',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           read: false,
         };
@@ -332,7 +332,7 @@ function App() {
       <div style={{ display: 'flex', flexGrow: 1, alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#080b11' }}>
         <div style={{ textAlign: 'center' }}>
           <CalendarDays className="logo-icon animate-pulse" size={48} />
-          <h2 style={{ fontFamily: 'var(--font-display)', marginTop: '1rem', color: '#fff' }}>Loading Scheduler...</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', marginTop: '1rem', color: '#fff' }}>Loading...</h2>
         </div>
       </div>
     );

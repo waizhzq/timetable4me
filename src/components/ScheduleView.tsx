@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import type { Task, FixedEvent, StudySession } from '../services/db';
-import { 
-  ArrowLeft, 
-  Plus, 
-  Trash2, 
-  BookOpen
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  BookOpen,
+  Download
 } from 'lucide-react';
+import { exportWeekAsPdf } from '../utils/exportPdf';
 
 interface ScheduleViewProps {
   tasks: Task[];
@@ -86,24 +88,46 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         position: 'relative',
         boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
       }}>
-        <button onClick={onBack} style={{ 
-          position: 'absolute', 
-          left: '1rem', 
-          background: 'none', 
-          border: 'none', 
+        <button onClick={onBack} style={{
+          position: 'absolute',
+          left: '1rem',
+          background: 'none',
+          border: 'none',
           cursor: 'pointer',
           color: '#fff'
         }}>
           <ArrowLeft size={24} />
         </button>
-        <h1 style={{ 
-          fontSize: '1.25rem', 
-          margin: 0, 
+        <h1 style={{
+          fontSize: '1.25rem',
+          margin: 0,
           color: '#fff',
           background: 'none',
           WebkitTextFillColor: 'initial',
           fontWeight: 700
         }}>Schedule</h1>
+        <button
+          onClick={() => exportWeekAsPdf(events, sessions, tasks)}
+          title="Export week as PDF"
+          style={{
+            position: 'absolute',
+            right: '1rem',
+            background: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '6px 12px',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+          }}
+        >
+          <Download size={15} />
+          PDF
+        </button>
       </header>
 
       {/* Day Selector */}

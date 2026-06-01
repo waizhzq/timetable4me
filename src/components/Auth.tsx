@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { dbService } from '../services/db';
 import type { UserProfile } from '../services/db';
-import { CalendarDays, ShieldAlert, ArrowRight, Sparkles } from 'lucide-react';
+import { CalendarDays, ShieldAlert } from 'lucide-react';
 
 interface AuthProps {
   onAuthSuccess: (user: UserProfile) => void;
@@ -32,7 +32,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
       const demoUser: UserProfile = {
         uid: 'demo-user-123',
         email: 'demo@timetable4.me',
-        displayName: 'Demo Scholar',
+        displayName: 'Demo',
       };
       localStorage.setItem('t4m_user', JSON.stringify(demoUser));
       dbService.clearMockData(); // Reset local storage database
@@ -52,9 +52,6 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         <div className="auth-header" style={{ marginBottom: '1.75rem' }}>
           <CalendarDays className="auth-logo" size={56} style={{ color: 'var(--primary)', marginBottom: '0.75rem' }} />
           <h2 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Timetable4me</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-            Smart Academic & Training Scheduler
-          </p>
         </div>
 
         {error && (
@@ -80,10 +77,6 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
           {isFirebase ? (
             <>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '0.5rem' }}>
-                Securely sign in with your student or professional Google account to synchronize your timetables.
-              </p>
-
               <button
                 onClick={handleGoogleSignIn}
                 disabled={loading}
@@ -157,9 +150,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
               fontSize: '0.85rem',
             }}
           >
-            <Sparkles size={14} className="logo-icon" />
-            <span>Enter local Sandbox Mode</span>
-            <ArrowRight size={12} />
+            <span>Enter Sandbox Mode</span>
           </button>
         </div>
       </div>

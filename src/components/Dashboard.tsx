@@ -203,33 +203,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '100%', overflowX: 'hidden' }}>
       
       {/* 1. SCHEDULE QUICK LINK */}
-      <div className="card" style={{ 
-        padding: '2rem', 
-        background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
-        border: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
-        gap: '1.25rem'
-      }}>
-        <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '1.25rem', borderRadius: '50%', color: '#fff', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
-          <Calendar size={40} style={{ color: 'inherit' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+          <Calendar size={16} />
+          <span>Weekly Schedule</span>
         </div>
-        <div style={{ color: '#fff' }}>
-          <h2 style={{ color: '#fff', marginBottom: '0.5rem', background: 'none', WebkitTextFillColor: 'initial', fontSize: '1.75rem' }}>Your Weekly Plan</h2>
-          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '1rem', maxWidth: '400px' }}>Access your personalized schedule, manage classes, and track your study progress in the new interactive view.</p>
-        </div>
-        <button onClick={onOpenSchedule} className="btn" style={{ 
-          backgroundColor: '#fff', 
-          color: 'var(--primary)', 
-          padding: '1rem 2.5rem',
-          fontWeight: 800,
-          borderRadius: '16px',
-          fontSize: '1.1rem',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-        }}>
-          OPEN FULL SCHEDULE
+        <button onClick={onOpenSchedule} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
+          Open Schedule
         </button>
       </div>
       {/* 2. INSPECTOR */}
@@ -292,7 +272,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {todayTimeline.length === 0 ? (
-          <p style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>✨ Your schedule is clear for today!</p>
+          <p style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Nothing scheduled today.</p>
         ) : (
           <div className="timeline">
             {todayTimeline.map((item) => {
