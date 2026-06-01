@@ -458,8 +458,7 @@ function App() {
             events={events}
             sessions={sessions}
             onBack={() => setCurrentView('dashboard')}
-            onAddTask={() => setShowManager(true)}
-            onAddEvent={() => setShowManager(true)}
+            onOpenManager={() => setShowManager(true)}
             onDeleteTask={handleDeleteTask}
             onDeleteEvent={handleDeleteEvent}
           />

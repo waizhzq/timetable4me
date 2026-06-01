@@ -9,16 +9,13 @@ import {
   Star,
   FileText,
   CheckSquare,
-  Square,
-  PlusCircle
+  Square
 } from 'lucide-react';
 
 interface DashboardProps {
   tasks: Task[];
   events: FixedEvent[];
   sessions: StudySession[];
-  preferences: UserPreferences;
-  conflictedTaskIds: string[];
   onToggleSession: (
     sessionId: string,
     completed: boolean,
@@ -27,12 +24,8 @@ interface DashboardProps {
   ) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
-  onAddTask: (task: Omit<Task, 'id'>) => Promise<void>;
-  onAddEvent: (event: Omit<FixedEvent, 'id'>) => Promise<void>;
   onUpdateEvent: (eventId: string, updates: Partial<FixedEvent>) => Promise<void>;
   onDeleteEvent: (eventId: string) => Promise<void>;
-  onSavePreferences: (newPrefs: UserPreferences) => Promise<void>;
-  onResetData: () => void;
   onOpenManager: () => void;
   onOpenSchedule: () => void;
 }
@@ -41,17 +34,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   tasks,
   events,
   sessions,
-  preferences,
-  conflictedTaskIds,
   onToggleSession,
   onUpdateTask,
   onDeleteTask,
-  onAddTask,
-  onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
-  onSavePreferences,
-  onResetData,
   onOpenManager,
   onOpenSchedule,
 }) => {

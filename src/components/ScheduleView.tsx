@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
-import { Task, FixedEvent, StudySession } from '../services/db';
+import type { Task, FixedEvent, StudySession } from '../services/db';
 import { 
   ArrowLeft, 
   Plus, 
   Trash2, 
-  MapPin, 
-  Clock, 
-  BookOpen,
-  PlusCircle
+  BookOpen
 } from 'lucide-react';
 
 interface ScheduleViewProps {
