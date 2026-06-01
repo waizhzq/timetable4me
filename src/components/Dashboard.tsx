@@ -61,7 +61,9 @@ export const Dashboard: React.FC<Props> = ({
   const [pomRunning, setPomRunning] = useState(false);
   const [pomCount,   setPomCount]   = useState(0); // completed work sessions
   const pomRef      = useRef<ReturnType<typeof setInterval>|null>(null);
-  const timeTextRef = useRef<HTMLDivElement>(null);
+  const msRef       = useRef<ReturnType<typeof setInterval>|null>(null);
+  const timeTextRef  = useRef<HTMLDivElement>(null);
+  const msDisplayRef = useRef<HTMLSpanElement>(null);
   const timerCardRef = useRef<HTMLDivElement>(null);
   const progressRef  = useRef<HTMLDivElement>(null);
 
@@ -122,6 +124,23 @@ export const Dashboard: React.FC<Props> = ({
       ease: 'linear',
     });
   }, [pomSecs, pomMode]);
+
+  // Millisecond display — direct DOM write, no React re-render
+  useEffect(() => {
+    let count = 0;
+    if (pomRunning) {
+      msRef.current = setInterval(() => {
+        count = (count + 1) % 100;
+        if (msDisplayRef.current) {
+          msDisplayRef.current.textContent = '.' + String(count).padStart(2, '0');
+        }
+      }, 10);
+    } else {
+      if (msRef.current) clearInterval(msRef.current);
+      if (msDisplayRef.current) msDisplayRef.current.textContent = '.00';
+    }
+    return () => { if (msRef.current) clearInterval(msRef.current); };
+  }, [pomRunning]);
 
   const togglePom = () => {
     if (!pomRunning && timeTextRef.current) {
@@ -317,20 +336,29 @@ export const Dashboard: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* THE TIME — big, monospace, anime.js controls color */}
+        {/* THE TIME — pixelated VT323 font, anime.js controls color */}
         <div
           ref={timeTextRef}
           style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'clamp(4.5rem, 18vw, 8rem)',
-            fontWeight: 700,
-            letterSpacing: '-0.04em',
+            fontFamily: "'VT323', monospace",
+            fontSize: 'clamp(5rem, 20vw, 9.5rem)',
+            fontWeight: 400,
+            letterSpacing: '0.02em',
             lineHeight: 1,
             color: COLOR_IDLE,
             transition: 'none',
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 0,
           }}
         >
-          {pomM}:{pomS}
+          <span>{pomM}:{pomS}</span>
+          <span
+            ref={msDisplayRef}
+            style={{ fontSize: '0.45em', opacity: 0.8, letterSpacing: 0, marginLeft: '0.08em' }}
+          >
+            .00
+          </span>
         </div>
 
         {/* Status label */}
