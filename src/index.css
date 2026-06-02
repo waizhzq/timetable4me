@@ -2,33 +2,32 @@
 
 :root {
   --primary: #EA5455;
-  --secondary: #F07B3F;
-  --accent: #d97706;
-  --bg-slate: #111111;
+  --secondary: #408A71;
+  --accent: #B0E4CC;
 
-  --primary-glow: rgba(234, 84, 85, 0.12);
-  --secondary-glow: rgba(240, 123, 63, 0.12);
-  --accent-glow: rgba(217, 119, 6, 0.12);
+  --primary-glow: rgba(234, 84, 85, 0.18);
+  --secondary-glow: rgba(64, 138, 113, 0.15);
+  --accent-glow: rgba(176, 228, 204, 0.12);
 
-  /* Warm café theme */
-  --bg-app: #f4ede3;
-  --bg-sidebar: #fdf9f4;
-  --bg-card: #fdf9f4;
-  --bg-card-hover: #f8f2e8;
-  --border-color: #e2d5c4;
-  --border-color-hover: #cfc0ab;
-  --text-primary: #1c1917;
-  --text-secondary: #78716c;
-  --text-muted: #a8a29e;
+  /* Forest matcha dark theme */
+  --bg-app: #091413;
+  --bg-sidebar: #0d1c1a;
+  --bg-card: #112321;
+  --bg-card-hover: #1a3330;
+  --border-color: #1e3d38;
+  --border-color-hover: #285A48;
+  --text-primary: #B0E4CC;
+  --text-secondary: #6aaa8e;
+  --text-muted: #3d7a63;
 
   --font-sans: 'Rubik', 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Rubik', var(--font-sans);
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  --shadow-sm: 0 1px 3px rgba(100, 70, 30, 0.08);
-  --shadow-md: 0 4px 12px rgba(100, 70, 30, 0.1);
-  --shadow-lg: 0 8px 24px rgba(100, 70, 30, 0.12);
-  --shadow-glow: 0 0 15px var(--primary-glow);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px var(--primary-glow);
 
   --sidebar-width: 260px;
   --header-height: 70px;
@@ -75,7 +74,7 @@ body {
   background: rgba(0, 0, 0, 0.05);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(176, 228, 204, 0.15);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -252,7 +251,7 @@ a:hover {
   align-items: center;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--border-color);
-  border-top: 3px solid var(--primary);
+  border-top: 2px solid var(--border-color-hover);
   padding-top: 1rem;
   margin-top: -1rem;
 }
@@ -375,22 +374,22 @@ a:hover {
 }
 
 .btn-secondary {
-  background-color: #ffffff;
+  background-color: rgba(176, 228, 204, 0.06);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
 }
 .btn-secondary:hover {
-  background-color: var(--bg-app);
+  background-color: rgba(176, 228, 204, 0.11);
   border-color: var(--border-color-hover);
 }
 
 .btn-danger {
-  background-color: rgba(239, 68, 68, 0.08);
+  background-color: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #dc2626;
+  color: #f87171;
 }
 .btn-danger:hover {
-  background-color: rgba(239, 68, 68, 0.15);
+  background-color: rgba(239, 68, 68, 0.18);
   border-color: rgba(239, 68, 68, 0.35);
 }
 
@@ -432,7 +431,7 @@ a:hover {
 }
 
 .form-control {
-  background-color: var(--bg-app);
+  background-color: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-md);
   padding: 0.75rem 1rem;
@@ -443,9 +442,8 @@ a:hover {
   outline: none;
 }
 .form-control:focus {
-  border-color: var(--primary);
-  box-shadow: var(--shadow-glow);
-  background-color: #ffffff;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 2px rgba(64, 138, 113, 0.2);
 }
 
 .form-row {
@@ -821,10 +819,10 @@ a:hover {
   transition: background-color var(--transition-fast);
 }
 .notification-item:hover {
-  background-color: var(--bg-app);
+  background-color: rgba(176, 228, 204, 0.04);
 }
 .notification-item.unread {
-  background-color: rgba(234, 84, 85, 0.04);
+  background-color: rgba(234, 84, 85, 0.08);
 }
 
 .notification-time {
@@ -835,7 +833,7 @@ a:hover {
 /* Task progress bars */
 .progress-container {
   width: 100%;
-  background-color: rgba(0, 0, 0, 0.06);
+  background-color: rgba(176, 228, 204, 0.08);
   height: 8px;
   border-radius: 4px;
   overflow: hidden;
