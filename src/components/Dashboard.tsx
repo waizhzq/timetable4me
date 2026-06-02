@@ -12,10 +12,10 @@ const WORK_SECS  = 25 * 60;
 const DAY_START  = 7;
 const DAY_END    = 23;
 
-const COLOR_IDLE  = 'rgba(255,255,255,0.18)';
+const COLOR_IDLE  = 'rgba(0,0,0,0.18)';
 const COLOR_WORK  = '#EA5455';
-const COLOR_BREAK = '#60a5fa';
-const COLOR_DONE  = '#ffffff';
+const COLOR_BREAK = '#3b82f6';
+const COLOR_DONE  = '#111111';
 
 interface Props {
   tasks: Task[]; events: FixedEvent[]; sessions: StudySession[]; todos: Todo[];
@@ -37,11 +37,11 @@ const DurationPill: React.FC<{
   onDec: (e: React.MouseEvent) => void;
   onInc: (e: React.MouseEvent) => void;
 }> = ({ label, value, onDec, onInc, step = 1 }) => (
-  <div style={{ display:'flex', alignItems:'center', gap:'0', backgroundColor:'rgba(255,255,255,0.05)', borderRadius:'4px', border:'1px solid rgba(255,255,255,0.07)', overflow:'hidden' }}>
-    <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.35)', padding:'4px 10px 4px 12px', letterSpacing:'0.06em', textTransform:'uppercase', userSelect:'none' }}>{label}</span>
-    <button onClick={onDec} style={{ background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.07)', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:'4px 9px', fontSize:'1rem', lineHeight:1, display:'flex', alignItems:'center' }}>−</button>
-    <span style={{ fontFamily:"'DS-Digital', monospace", fontSize:'1.05rem', color:'#fff', padding:'0 6px', minWidth:'28px', textAlign:'center', userSelect:'none' }}>{value}{step > 1 ? 'm' : ''}</span>
-    <button onClick={onInc} style={{ background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.07)', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:'4px 9px', fontSize:'1rem', lineHeight:1, display:'flex', alignItems:'center' }}>+</button>
+  <div style={{ display:'flex', alignItems:'center', gap:'0', backgroundColor:'rgba(0,0,0,0.04)', borderRadius:'4px', border:'1px solid var(--border-color)', overflow:'hidden' }}>
+    <span style={{ fontSize:'0.62rem', color:'var(--text-muted)', padding:'4px 10px 4px 12px', letterSpacing:'0.06em', textTransform:'uppercase', userSelect:'none' }}>{label}</span>
+    <button onClick={onDec} style={{ background:'none', border:'none', borderLeft:'1px solid var(--border-color)', cursor:'pointer', color:'var(--text-secondary)', padding:'4px 9px', fontSize:'1rem', lineHeight:1, display:'flex', alignItems:'center' }}>−</button>
+    <span style={{ fontFamily:"'DS-Digital', monospace", fontSize:'1.05rem', color:'var(--text-primary)', padding:'0 6px', minWidth:'28px', textAlign:'center', userSelect:'none' }}>{value}{step > 1 ? 'm' : ''}</span>
+    <button onClick={onInc} style={{ background:'none', border:'none', borderLeft:'1px solid var(--border-color)', cursor:'pointer', color:'var(--text-secondary)', padding:'4px 9px', fontSize:'1rem', lineHeight:1, display:'flex', alignItems:'center' }}>+</button>
   </div>
 );
 
@@ -104,7 +104,7 @@ export const Dashboard: React.FC<Props> = ({
             const { timerType: tt, workMins: wm, breakMins: bm, freeMins: fm, pomMode: pm } = settingsRef.current;
             // Completion animations
             if (timeTextRef.current) animate(timeTextRef.current, { color: [COLOR_DONE, COLOR_IDLE], scale: [{ to: 1.04, duration: 120 }, { to: 1, duration: 400 }], duration: 800, ease: 'outElastic(1, .5)' });
-            if (timerCardRef.current) animate(timerCardRef.current, { backgroundColor: ['rgba(255,255,255,0.04)', 'rgba(9,13,19,1)'], duration: 600, ease: 'outQuad' });
+            if (timerCardRef.current) animate(timerCardRef.current, { backgroundColor: ['rgba(234,84,85,0.08)', 'var(--bg-card)'], duration: 700, ease: 'outQuad' });
             if (tt === 'free') {
               setPomSecs(fm * 60);
             } else {
@@ -317,9 +317,9 @@ export const Dashboard: React.FC<Props> = ({
         ref={timerCardRef}
         onClick={togglePom}
         style={{
-          backgroundColor: '#090d13',
+          backgroundColor: 'var(--bg-card)',
           borderRadius: 'var(--border-radius-lg)',
-          border: '1px solid rgba(255,255,255,0.05)',
+          border: '1px solid var(--border-color)',
           padding: '1.5rem 1.5rem 0',
           cursor: 'pointer',
           userSelect: 'none',
@@ -334,10 +334,10 @@ export const Dashboard: React.FC<Props> = ({
         {/* Top row: type toggle + session count + reset */}
         <div style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }} onClick={e => e.stopPropagation()}>
           {/* Timer type toggle */}
-          <div style={{ display:'flex', gap:'0', backgroundColor:'rgba(255,255,255,0.05)', borderRadius:'4px', padding:'2px' }}>
+          <div style={{ display:'flex', gap:'0', backgroundColor:'rgba(0,0,0,0.05)', borderRadius:'4px', padding:'2px' }}>
             {(['pomodoro','free'] as const).map(t => (
               <button key={t} onClick={e => { e.stopPropagation(); setTimerType(t); setPomRunning(false); }}
-                style={{ padding:'3px 12px', borderRadius:'4px', border:'none', fontSize:'0.65rem', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', backgroundColor: timerType===t ? 'rgba(255,255,255,0.12)' : 'transparent', color: timerType===t ? '#fff' : 'rgba(255,255,255,0.3)', transition:'all 0.2s' }}>
+                style={{ padding:'3px 12px', borderRadius:'4px', border:'none', fontSize:'0.65rem', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', backgroundColor: timerType===t ? 'var(--bg-app)' : 'transparent', color: timerType===t ? 'var(--text-primary)' : 'var(--text-muted)', transition:'all 0.2s' }}>
                 {t === 'pomodoro' ? 'Pomodoro' : 'Free'}
               </button>
             ))}
@@ -345,13 +345,13 @@ export const Dashboard: React.FC<Props> = ({
 
           <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
             {timerType === 'pomodoro' && pomCount > 0 && (
-              <span style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.25)', letterSpacing:'0.04em' }}>
-                {pomCount} {pomCount===1?'done':'done'}
+              <span style={{ fontSize:'0.68rem', color:'var(--text-muted)', letterSpacing:'0.04em' }}>
+                {pomCount} done
               </span>
             )}
-            <button onClick={resetPom} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.2)', padding:'4px', display:'flex', transition:'color 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.color='rgba(255,255,255,0.6)')}
-              onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,0.2)')}>
+            <button onClick={resetPom} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:'4px', display:'flex', transition:'color 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
               <RotateCcw size={14}/>
             </button>
           </div>
@@ -362,7 +362,7 @@ export const Dashboard: React.FC<Props> = ({
           <div style={{ display:'flex', gap:'0.3rem', marginBottom:'0.5rem' }} onClick={e => e.stopPropagation()}>
             {(['work','break'] as const).map(m => (
               <button key={m} onClick={e => switchMode(m, e)}
-                style={{ padding:'2px 10px', borderRadius:'4px', border:'none', fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', backgroundColor: pomMode===m ? 'rgba(255,255,255,0.1)' : 'transparent', color: pomMode===m ? '#fff' : 'rgba(255,255,255,0.2)', transition:'all 0.2s' }}>
+                style={{ padding:'2px 10px', borderRadius:'4px', border:'none', fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', backgroundColor: pomMode===m ? 'rgba(0,0,0,0.06)' : 'transparent', color: pomMode===m ? 'var(--text-primary)' : 'var(--text-muted)', transition:'all 0.2s' }}>
                 {m === 'work' ? 'Focus' : 'Break'}
               </button>
             ))}
@@ -379,7 +379,7 @@ export const Dashboard: React.FC<Props> = ({
         </div>
 
         {/* Status label */}
-        <div style={{ marginTop:'0.75rem', fontSize:'0.62rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(255,255,255,0.2)', fontFamily:'var(--font-mono)' }}>
+        <div style={{ marginTop:'0.75rem', fontSize:'0.62rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--text-muted)', fontFamily:'var(--font-mono)' }}>
           {statusLabel}
         </div>
 
@@ -401,7 +401,7 @@ export const Dashboard: React.FC<Props> = ({
         {pomRunning && <div style={{ height:'1.25rem' }} />}
 
         {/* Progress bar */}
-        <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'3px', backgroundColor:'rgba(255,255,255,0.04)' }}>
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'3px', backgroundColor:'rgba(0,0,0,0.07)' }}>
           <div ref={progressRef} style={{ height:'100%', width:`${progressPctTimer}%`, backgroundColor: timerType==='free' ? COLOR_BREAK : pomMode==='work' ? COLOR_WORK : COLOR_BREAK, opacity:0.7, borderRadius:'0 2px 2px 0' }}/>
         </div>
       </div>
@@ -432,7 +432,7 @@ export const Dashboard: React.FC<Props> = ({
             );
           })}
           {nowPct > 0 && nowPct < 100 && (
-            <div style={{ position:'absolute', left:`${nowPct}%`, top:0, bottom:0, width:'2px', backgroundColor:'#fff', opacity:0.6, borderRadius:'1px' }}/>
+            <div style={{ position:'absolute', left:`${nowPct}%`, top:0, bottom:0, width:'2px', backgroundColor:'var(--primary)', opacity:0.8, borderRadius:'1px' }}/>
           )}
         </div>
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:'4px', fontSize:'0.68rem', color:'var(--text-muted)' }}>
@@ -445,7 +445,7 @@ export const Dashboard: React.FC<Props> = ({
         <div>
           <div style={{ fontSize:'0.65rem', color:'var(--text-muted)', marginBottom:'0.25rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Today</div>
           <div style={{ fontSize:'1rem', fontWeight:700, color:'var(--text-primary)' }}>{doneSessions}<span style={{ fontSize:'0.75rem', fontWeight:400, color:'var(--text-secondary)' }}>/{totalSessions}</span></div>
-          <div style={{ marginTop:'0.35rem', height:'3px', borderRadius:'2px', backgroundColor:'rgba(0,0,0,0.08)' }}>
+          <div style={{ marginTop:'0.4rem', height:'5px', borderRadius:'2px', backgroundColor:'rgba(0,0,0,0.08)' }}>
             <div style={{ height:'100%', width:`${progressPct}%`, borderRadius:'2px', backgroundColor: progressPct===100?'#34d399':'var(--primary)', transition:'width 0.4s' }}/>
           </div>
         </div>
