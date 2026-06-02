@@ -2,6 +2,9 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = ".firebaserc,.github/workflows/firebase-hosting-merge.yml"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
