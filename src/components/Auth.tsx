@@ -29,12 +29,13 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
       <div className="auth-card" style={{ maxWidth: '400px' }}>
         <div className="auth-header" style={{ marginBottom: '2rem' }}>
           <svg width="52" height="52" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '0.75rem' }}>
-              <rect width="32" height="32" rx="8" fill="#EA5455"/>
-              <circle cx="16" cy="17" r="8.5" stroke="white" strokeWidth="1.8" fill="none"/>
-              <line x1="16" y1="17" x2="16" y2="11.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="16" y1="17" x2="20.5" y2="19.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="16" cy="17" r="1.2" fill="white"/>
-              <rect x="13" y="6" width="6" height="2" rx="1" fill="white"/>
+              <rect width="32" height="32" rx="8" fill="#0d1c1a"/>
+              <rect width="32" height="32" rx="8" fill="#285A48" fillOpacity="0.6"/>
+              <circle cx="16" cy="17" r="8.5" stroke="#B0E4CC" strokeWidth="1.6" fill="none"/>
+              <line x1="16" y1="17" x2="16" y2="11.5" stroke="#B0E4CC" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="16" y1="17" x2="20.5" y2="19.5" stroke="#B0E4CC" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="16" cy="17" r="1.2" fill="#B0E4CC"/>
+              <rect x="13" y="6" width="6" height="2" rx="1" fill="#408A71"/>
             </svg>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>Timetable4me</h2>
         </div>
