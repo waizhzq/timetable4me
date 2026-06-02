@@ -232,7 +232,7 @@ function App() {
           <div className="header-actions">
             <button onClick={() => setCurrentView(v => v === 'dashboard' ? 'schedule' : 'dashboard')}
               className="btn btn-secondary header-schedule-btn"
-              style={{ padding: '7px 14px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
+              style={{ padding: '7px 14px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
               <CalendarIcon size={15} />
               <span className="header-btn-label">{currentView === 'dashboard' ? 'Schedule' : 'Dashboard'}</span>
             </button>

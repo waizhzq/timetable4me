@@ -37,7 +37,7 @@ const DurationPill: React.FC<{
   onDec: (e: React.MouseEvent) => void;
   onInc: (e: React.MouseEvent) => void;
 }> = ({ label, value, onDec, onInc, step = 1 }) => (
-  <div style={{ display:'flex', alignItems:'center', gap:'0', backgroundColor:'rgba(255,255,255,0.05)', borderRadius:'20px', border:'1px solid rgba(255,255,255,0.07)', overflow:'hidden' }}>
+  <div style={{ display:'flex', alignItems:'center', gap:'0', backgroundColor:'rgba(255,255,255,0.05)', borderRadius:'4px', border:'1px solid rgba(255,255,255,0.07)', overflow:'hidden' }}>
     <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.35)', padding:'4px 10px 4px 12px', letterSpacing:'0.06em', textTransform:'uppercase', userSelect:'none' }}>{label}</span>
     <button onClick={onDec} style={{ background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.07)', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:'4px 9px', fontSize:'1rem', lineHeight:1, display:'flex', alignItems:'center' }}>−</button>
     <span style={{ fontFamily:"'DS-Digital', monospace", fontSize:'1.05rem', color:'#fff', padding:'0 6px', minWidth:'28px', textAlign:'center', userSelect:'none' }}>{value}{step > 1 ? 'm' : ''}</span>
@@ -334,10 +334,10 @@ export const Dashboard: React.FC<Props> = ({
         {/* Top row: type toggle + session count + reset */}
         <div style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }} onClick={e => e.stopPropagation()}>
           {/* Timer type toggle */}
-          <div style={{ display:'flex', gap:'0', backgroundColor:'rgba(255,255,255,0.05)', borderRadius:'20px', padding:'2px' }}>
+          <div style={{ display:'flex', gap:'0', backgroundColor:'rgba(255,255,255,0.05)', borderRadius:'4px', padding:'2px' }}>
             {(['pomodoro','free'] as const).map(t => (
               <button key={t} onClick={e => { e.stopPropagation(); setTimerType(t); setPomRunning(false); }}
-                style={{ padding:'3px 12px', borderRadius:'20px', border:'none', fontSize:'0.65rem', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', backgroundColor: timerType===t ? 'rgba(255,255,255,0.12)' : 'transparent', color: timerType===t ? '#fff' : 'rgba(255,255,255,0.3)', transition:'all 0.2s' }}>
+                style={{ padding:'3px 12px', borderRadius:'4px', border:'none', fontSize:'0.65rem', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', backgroundColor: timerType===t ? 'rgba(255,255,255,0.12)' : 'transparent', color: timerType===t ? '#fff' : 'rgba(255,255,255,0.3)', transition:'all 0.2s' }}>
                 {t === 'pomodoro' ? 'Pomodoro' : 'Free'}
               </button>
             ))}
@@ -362,7 +362,7 @@ export const Dashboard: React.FC<Props> = ({
           <div style={{ display:'flex', gap:'0.3rem', marginBottom:'0.5rem' }} onClick={e => e.stopPropagation()}>
             {(['work','break'] as const).map(m => (
               <button key={m} onClick={e => switchMode(m, e)}
-                style={{ padding:'2px 10px', borderRadius:'20px', border:'none', fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', backgroundColor: pomMode===m ? 'rgba(255,255,255,0.1)' : 'transparent', color: pomMode===m ? '#fff' : 'rgba(255,255,255,0.2)', transition:'all 0.2s' }}>
+                style={{ padding:'2px 10px', borderRadius:'4px', border:'none', fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', backgroundColor: pomMode===m ? 'rgba(255,255,255,0.1)' : 'transparent', color: pomMode===m ? '#fff' : 'rgba(255,255,255,0.2)', transition:'all 0.2s' }}>
                 {m === 'work' ? 'Focus' : 'Break'}
               </button>
             ))}
@@ -416,7 +416,7 @@ export const Dashboard: React.FC<Props> = ({
           </div>
           <button onClick={onOpenSchedule} className="btn btn-secondary" style={{ padding:'4px 12px', fontSize:'0.75rem' }}>Full view</button>
         </div>
-        <div style={{ position:'relative', height:'36px', backgroundColor:'rgba(0,0,0,0.05)', borderRadius:'8px', overflow:'hidden' }}>
+        <div style={{ position:'relative', height:'36px', backgroundColor:'rgba(0,0,0,0.05)', borderRadius:'4px', overflow:'hidden' }}>
           {[8,10,12,14,16,18,20,22].map(h => (
             <div key={h} style={{ position:'absolute', left:`${pct(h*60)}%`, top:0, bottom:0, width:'1px', backgroundColor:'rgba(0,0,0,0.1)' }}>
               <span style={{ position:'absolute', top:'2px', left:'2px', fontSize:'9px', color:'var(--text-muted)' }}>{h}</span>
@@ -493,7 +493,7 @@ export const Dashboard: React.FC<Props> = ({
               </div>
               {editingNote
                 ? <textarea className="form-control" style={{ width:'100%', minHeight:'70px', fontSize:'0.85rem', boxSizing:'border-box' }} value={noteText} onChange={e => setNoteText(e.target.value)}/>
-                : <div style={{ backgroundColor:'rgba(0,0,0,0.04)', padding:'0.75rem', borderRadius:'8px', fontSize:'0.85rem', color:'var(--text-secondary)', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{insp.notes || 'No notes.'}</div>
+                : <div style={{ backgroundColor:'rgba(0,0,0,0.04)', padding:'0.75rem', borderRadius:'4px', fontSize:'0.85rem', color:'var(--text-secondary)', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{insp.notes || 'No notes.'}</div>
               }
             </div>
             <div style={{ display:'flex', gap:'0.5rem' }}>
@@ -565,7 +565,7 @@ export const Dashboard: React.FC<Props> = ({
             {activeTasks.length === 0
               ? <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', textAlign:'center', padding:'0.75rem' }}>No active tasks.</p>
               : activeTasks.slice(0,3).map(t => (
-                  <div key={t.id} style={{ padding:'0.85rem', backgroundColor:'var(--bg-app)', borderRadius:'10px', border:'1px solid var(--border-color)', borderLeft:`3px solid ${t.color}` }}>
+                  <div key={t.id} style={{ padding:'0.85rem', backgroundColor:'var(--bg-app)', borderRadius:'5px', border:'1px solid var(--border-color)', borderLeft:`3px solid ${t.color}` }}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'0.4rem' }}>
                       <span style={{ fontWeight:600, fontSize:'0.85rem', color:'var(--text-primary)' }}>{catEmoji(t.category)} {t.title}</span>
                       <span>{prioEmoji(t.priority)}</span>
@@ -588,7 +588,7 @@ export const Dashboard: React.FC<Props> = ({
                 <AlertCircle size={10}/> Overdue
               </div>
               {overdue.map(t => (
-                <div key={t.id} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.82rem', padding:'0.45rem 0.55rem', borderRadius:'6px', backgroundColor:'rgba(248,113,113,0.07)', border:'1px solid rgba(248,113,113,0.15)' }}>
+                <div key={t.id} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.82rem', padding:'0.45rem 0.55rem', borderRadius:'4px', backgroundColor:'rgba(248,113,113,0.07)', border:'1px solid rgba(248,113,113,0.15)' }}>
                   <span style={{ color:'#fca5a5' }}>{catEmoji(t.category)} {t.title}</span>
                   <span style={{ color:'#f87171', fontWeight:700 }}>{fmtDate(t.deadline)}</span>
                 </div>
@@ -618,7 +618,7 @@ export const Dashboard: React.FC<Props> = ({
             { label:'Rate',     value:`${weekRate}%` },
             { label:'Done',     value:`${weekTasksDone}` },
           ].map(s => (
-            <div key={s.label} style={{ padding:'0.65rem', backgroundColor:'var(--bg-app)', borderRadius:'8px', border:'1px solid var(--border-color)', textAlign:'center' }}>
+            <div key={s.label} style={{ padding:'0.65rem', backgroundColor:'var(--bg-app)', borderRadius:'4px', border:'1px solid var(--border-color)', textAlign:'center' }}>
               <div style={{ fontSize:'0.58rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'0.2rem' }}>{s.label}</div>
               <div style={{ fontSize:'1.1rem', fontWeight:700, color:'var(--text-primary)' }}>{s.value}</div>
             </div>
@@ -643,7 +643,7 @@ export const Dashboard: React.FC<Props> = ({
           ? <p style={{ textAlign:'center', padding:'1.25rem', color:'var(--text-muted)', fontSize:'0.82rem' }}>Nothing here yet.</p>
           : <div style={{ display:'flex', flexDirection:'column', gap:'0.45rem' }}>
               {todos.map(todo => (
-                <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.55rem 0.7rem', borderRadius:'8px', backgroundColor:todo.done?'transparent':'var(--bg-app)', border:'1px solid var(--border-color)' }}>
+                <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.55rem 0.7rem', borderRadius:'4px', backgroundColor:todo.done?'transparent':'var(--bg-app)', border:'1px solid var(--border-color)' }}>
                   <button onClick={() => onToggleTodo(todo.id,!todo.done)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:todo.done?'#34d399':'var(--text-muted)', display:'flex', flexShrink:0 }}>
                     {todo.done ? <CheckCircle2 size={17}/> : <Square size={17}/>}
                   </button>
@@ -667,7 +667,7 @@ export const Dashboard: React.FC<Props> = ({
               { label:'Manage',    onClick: onOpenManager },
             ].map((item,i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                <span style={{ backgroundColor:'#111111', color:'#fff', padding:'4px 10px', borderRadius:'6px', fontSize:'0.78rem', fontWeight:500, border:'none' }}>{item.label}</span>
+                <span style={{ backgroundColor:'#111111', color:'#fff', padding:'4px 10px', borderRadius:'4px', fontSize:'0.78rem', fontWeight:500, border:'none' }}>{item.label}</span>
                 <button onClick={() => { item.onClick(); setFabOpen(false); }} className="btn btn-secondary" style={{ width:'40px', height:'40px', borderRadius:'50%', padding:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <Plus size={16}/>
                 </button>
