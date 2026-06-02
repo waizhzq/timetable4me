@@ -1,49 +1,41 @@
 /* Smart Academic & Training Scheduler - Global Style System */
 
 :root {
-  /* Requested Color Palette */
-  --primary: #EA5455;   /* Coral */
-  --secondary: #F07B3F; /* Orange */
-  --accent: #FFD460;    /* Yellow */
-  --bg-slate: #2D4059;  /* Navy Slate */
-  
-  --primary-glow: rgba(234, 84, 85, 0.15);
-  --secondary-glow: rgba(240, 123, 63, 0.15);
-  --accent-glow: rgba(255, 212, 96, 0.15);
+  --primary: #EA5455;
+  --secondary: #F07B3F;
+  --accent: #d97706;
+  --bg-slate: #111111;
 
-  /* Theme Colors (Derived from Navy Slate #2D4059) */
-  --bg-app: #0f151e; 
-  --bg-sidebar: #192330; 
-  --bg-card: rgba(45, 64, 89, 0.4); /* Navy Slate glass */
-  --bg-card-hover: rgba(45, 64, 89, 0.65);
-  --border-color: rgba(255, 255, 255, 0.06);
-  --border-color-hover: rgba(255, 255, 255, 0.12);
-  --text-primary: #f3f4f6;
-  --text-secondary: #a5acb9;
-  --text-muted: #64748b;
+  --primary-glow: rgba(234, 84, 85, 0.12);
+  --secondary-glow: rgba(240, 123, 63, 0.12);
+  --accent-glow: rgba(217, 119, 6, 0.12);
 
-  /* Typography */
+  /* Light theme */
+  --bg-app: #f5f5f2;
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f9f9f7;
+  --border-color: #e8e8e3;
+  --border-color-hover: #d1d1cb;
+  --text-primary: #111111;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+
   --font-sans: 'Rubik', 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Rubik', var(--font-sans);
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  /* Shadows & Glassmorphism */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.10);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
   --shadow-glow: 0 0 15px var(--primary-glow);
-  --glass-bg: rgba(15, 23, 42, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.05);
-  --glass-blur: blur(12px);
 
-  /* Layout */
   --sidebar-width: 260px;
   --header-height: 70px;
   --border-radius-sm: 6px;
   --border-radius-md: 12px;
   --border-radius-lg: 18px;
 
-  /* Transitions */
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -83,7 +75,7 @@ body {
   background: rgba(0, 0, 0, 0.05);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -100,9 +92,7 @@ h1, h2, h3, h4, h5, h6 {
 h1 {
   font-size: 2.25rem;
   margin: 0 0 1.5rem 0;
-  background: linear-gradient(135deg, #fff 30%, var(--primary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
 }
 
 p {
@@ -153,7 +143,6 @@ a:hover {
 
 .logo-icon {
   color: var(--primary);
-  filter: drop-shadow(0 0 8px var(--primary-glow));
 }
 
 .logo-text {
@@ -163,7 +152,7 @@ a:hover {
   font-stretch: condensed;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .sidebar-menu {
@@ -209,7 +198,7 @@ a:hover {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: var(--bg-app);
   border-radius: var(--border-radius-md);
   border: 1px solid var(--border-color);
 }
@@ -370,12 +359,12 @@ a:hover {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), #a78bfa);
+  background-color: var(--primary);
   color: #fff;
   box-shadow: var(--shadow-glow);
 }
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--primary-hover), var(--primary));
+  background-color: #d94445;
   transform: translateY(-1px);
 }
 .btn-primary:active {
@@ -383,23 +372,23 @@ a:hover {
 }
 
 .btn-secondary {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: #ffffff;
   border: 1px solid var(--border-color);
   color: var(--text-primary);
 }
 .btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--bg-app);
   border-color: var(--border-color-hover);
 }
 
 .btn-danger {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  color: #dc2626;
 }
 .btn-danger:hover {
-  background-color: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.4);
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
 }
 
 .card {
@@ -407,21 +396,22 @@ a:hover {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);
   padding: 1.5rem;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   transition: all var(--transition-normal);
 }
 .card:hover {
   border-color: var(--border-color-hover);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .card-title {
-  font-size: 1.15rem;
+  font-size: 1rem;
   margin-bottom: 1rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #fff;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* Form Styles */
@@ -439,11 +429,11 @@ a:hover {
 }
 
 .form-control {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--bg-app);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-md);
   padding: 0.75rem 1rem;
-  color: #fff;
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 0.95rem;
   transition: all var(--transition-fast);
@@ -452,6 +442,7 @@ a:hover {
 .form-control:focus {
   border-color: var(--primary);
   box-shadow: var(--shadow-glow);
+  background-color: #ffffff;
 }
 
 .form-row {
@@ -827,10 +818,10 @@ a:hover {
   transition: background-color var(--transition-fast);
 }
 .notification-item:hover {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: var(--bg-app);
 }
 .notification-item.unread {
-  background-color: rgba(139, 92, 246, 0.05);
+  background-color: rgba(234, 84, 85, 0.04);
 }
 
 .notification-time {
@@ -841,7 +832,7 @@ a:hover {
 /* Task progress bars */
 .progress-container {
   width: 100%;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(0, 0, 0, 0.06);
   height: 8px;
   border-radius: 4px;
   overflow: hidden;

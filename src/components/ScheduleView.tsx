@@ -119,7 +119,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           <ArrowLeft size={22} />
         </button>
 
-        <span style={{ fontWeight: 600, fontSize: '0.95rem', color: '#fff' }}>{headerDate}</span>
+        <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{headerDate}</span>
 
         <button onClick={() => exportWeekAsPdf(events, sessions, tasks)}
           className="btn btn-secondary"
@@ -146,7 +146,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                 borderBottom: isSel ? '2px solid var(--primary)' : '2px solid transparent',
                 transition: 'border-color 0.15s',
               }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: isSel ? '#fff' : 'var(--text-muted)' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: isSel ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                 {SHORT_DAYS[i]}
               </span>
               <span style={{
@@ -154,7 +154,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '0.85rem', fontWeight: isSel ? 700 : 400,
                 backgroundColor: isToday ? 'var(--primary)' : 'transparent',
-                color: isToday ? '#fff' : isSel ? '#fff' : 'var(--text-secondary)',
+                color: isToday ? '#fff' : isSel ? 'var(--text-primary)' : 'var(--text-secondary)',
               }}>
                 {d.getDate()}
               </span>
@@ -211,7 +211,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                 : <Circle size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
                             )}
                             <span style={{
-                              fontSize: '0.92rem', fontWeight: 600, color: isDone ? 'var(--text-muted)' : '#fff',
+                              fontSize: '0.92rem', fontWeight: 600, color: isDone ? 'var(--text-muted)' : 'var(--text-primary)',
                               textDecoration: isDone ? 'line-through' : 'none',
                               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                             }}>

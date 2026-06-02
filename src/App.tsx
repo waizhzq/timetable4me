@@ -6,7 +6,7 @@ import { Auth } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
 import { ScheduleView } from './components/ScheduleView';
 import { ScheduleManager } from './components/ScheduleManager';
-import { Bell, LogOut, X, CalendarDays, Calendar as CalendarIcon } from 'lucide-react';
+import { Bell, LogOut, X, Calendar as CalendarIcon } from 'lucide-react';
 
 interface InAppNotification {
   id: string; title: string; message: string; time: string; read: boolean;
@@ -193,10 +193,17 @@ function App() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#080b11' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--bg-app)' }}>
         <div style={{ textAlign: 'center' }}>
-          <CalendarDays className="logo-icon animate-pulse" size={48} />
-          <h2 style={{ fontFamily: 'var(--font-display)', marginTop: '1rem', color: '#fff' }}>Loading...</h2>
+          <svg width="56" height="56" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+              <rect width="32" height="32" rx="8" fill="#EA5455"/>
+              <circle cx="16" cy="17" r="8.5" stroke="white" strokeWidth="1.8" fill="none"/>
+              <line x1="16" y1="17" x2="16" y2="11.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="16" y1="17" x2="20.5" y2="19.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="16" cy="17" r="1.2" fill="white"/>
+              <rect x="13" y="6" width="6" height="2" rx="1" fill="white"/>
+            </svg>
+          <h2 style={{ fontFamily: 'var(--font-display)', marginTop: '1rem', color: 'var(--text-primary)' }}>Loading...</h2>
         </div>
       </div>
     );
@@ -211,7 +218,14 @@ function App() {
         {/* Header */}
         <header className="header-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <CalendarDays className="logo-icon" size={24} />
+            <svg width="28" height="28" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="8" fill="#EA5455"/>
+              <circle cx="16" cy="17" r="8.5" stroke="white" strokeWidth="1.8" fill="none"/>
+              <line x1="16" y1="17" x2="16" y2="11.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="16" y1="17" x2="20.5" y2="19.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="16" cy="17" r="1.2" fill="white"/>
+              <rect x="13" y="6" width="6" height="2" rx="1" fill="white"/>
+            </svg>
             <span className="logo-text" style={{ fontSize: '1.25rem' }}>Timetable4me</span>
           </div>
 
@@ -242,7 +256,7 @@ function App() {
                       : notifications.map(n => (
                           <div key={n.id} className={`notification-item ${!n.read ? 'unread' : ''}`}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                              <span style={{ color: '#fff' }}>{n.title}</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{n.title}</span>
                               <span className="notification-time">{n.time}</span>
                             </div>
                             <span style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>{n.message}</span>

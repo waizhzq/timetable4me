@@ -409,16 +409,16 @@ export const Dashboard: React.FC<Props> = ({
       {/* ══ MINI SCHEDULE ═══════════════════════════════════════════════════ */}
       <div className="card" style={{ padding:'1rem' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', color:'#fff', fontWeight:600, fontSize:'0.9rem' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', color:'var(--text-primary)', fontWeight:600, fontSize:'0.9rem' }}>
             <CalendarDays size={16} className="logo-icon"/>
             <span>{todayName}</span>
             <span style={{ color:'var(--text-muted)', fontWeight:400, fontSize:'0.78rem', marginLeft:'0.2rem' }}>{now.toLocaleDateString([],{month:'short',day:'numeric'})}</span>
           </div>
           <button onClick={onOpenSchedule} className="btn btn-secondary" style={{ padding:'4px 12px', fontSize:'0.75rem' }}>Full view</button>
         </div>
-        <div style={{ position:'relative', height:'36px', backgroundColor:'rgba(255,255,255,0.03)', borderRadius:'8px', overflow:'hidden' }}>
+        <div style={{ position:'relative', height:'36px', backgroundColor:'rgba(0,0,0,0.05)', borderRadius:'8px', overflow:'hidden' }}>
           {[8,10,12,14,16,18,20,22].map(h => (
-            <div key={h} style={{ position:'absolute', left:`${pct(h*60)}%`, top:0, bottom:0, width:'1px', backgroundColor:'rgba(255,255,255,0.05)' }}>
+            <div key={h} style={{ position:'absolute', left:`${pct(h*60)}%`, top:0, bottom:0, width:'1px', backgroundColor:'rgba(0,0,0,0.1)' }}>
               <span style={{ position:'absolute', top:'2px', left:'2px', fontSize:'9px', color:'var(--text-muted)' }}>{h}</span>
             </div>
           ))}
@@ -444,8 +444,8 @@ export const Dashboard: React.FC<Props> = ({
       <div className="card" style={{ padding:'0.9rem 1.1rem', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0.75rem' }}>
         <div>
           <div style={{ fontSize:'0.65rem', color:'var(--text-muted)', marginBottom:'0.25rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Today</div>
-          <div style={{ fontSize:'1rem', fontWeight:700, color:'#fff' }}>{doneSessions}<span style={{ fontSize:'0.75rem', fontWeight:400, color:'var(--text-secondary)' }}>/{totalSessions}</span></div>
-          <div style={{ marginTop:'0.35rem', height:'3px', borderRadius:'2px', backgroundColor:'rgba(255,255,255,0.06)' }}>
+          <div style={{ fontSize:'1rem', fontWeight:700, color:'var(--text-primary)' }}>{doneSessions}<span style={{ fontSize:'0.75rem', fontWeight:400, color:'var(--text-secondary)' }}>/{totalSessions}</span></div>
+          <div style={{ marginTop:'0.35rem', height:'3px', borderRadius:'2px', backgroundColor:'rgba(0,0,0,0.08)' }}>
             <div style={{ height:'100%', width:`${progressPct}%`, borderRadius:'2px', backgroundColor: progressPct===100?'#34d399':'var(--primary)', transition:'width 0.4s' }}/>
           </div>
         </div>
@@ -453,7 +453,7 @@ export const Dashboard: React.FC<Props> = ({
           <div style={{ fontSize:'0.65rem', color:'var(--text-muted)', marginBottom:'0.25rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Next</div>
           {nextItem
             ? <div style={{ display:'flex', alignItems:'center', gap:'0.25rem' }}>
-                <span style={{ fontSize:'0.8rem', fontWeight:600, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'80px' }}>{nextItem.title}</span>
+                <span style={{ fontSize:'0.8rem', fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'80px' }}>{nextItem.title}</span>
                 <ArrowRight size={11} color="var(--text-muted)"/>
                 <span style={{ fontSize:'0.7rem', color:'var(--accent)', whiteSpace:'nowrap' }}>{nextLabel}</span>
               </div>
@@ -478,7 +478,7 @@ export const Dashboard: React.FC<Props> = ({
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', borderBottom:'1px solid var(--border-color)', paddingBottom:'0.7rem', marginBottom:'1rem' }}>
             <div>
               <span style={{ fontSize:'0.6rem', padding:'2px 7px', borderRadius:'4px', textTransform:'uppercase', fontWeight:700, backgroundColor:`${insp.color}22`, color:insp.color }}>{insp.category}</span>
-              <h3 style={{ margin:'5px 0 0', color:'#fff', fontSize:'1.1rem' }}>{insp.title} {insp.priority && prioEmoji(insp.priority)}</h3>
+              <h3 style={{ margin:'5px 0 0', color:'var(--text-primary)', fontSize:'1.1rem' }}>{insp.title} {insp.priority && prioEmoji(insp.priority)}</h3>
               <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', color:'var(--text-secondary)', fontSize:'0.78rem', marginTop:'5px' }}>
                 <Clock size={13}/><span>{insp.timeRange}</span>
               </div>
@@ -488,12 +488,12 @@ export const Dashboard: React.FC<Props> = ({
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
             <div>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.4rem' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.85rem', fontWeight:600, color:'#fff' }}><FileText size={14}/> Notes</div>
+                <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.85rem', fontWeight:600, color:'var(--text-primary)' }}><FileText size={14}/> Notes</div>
                 <button onClick={() => { if(editingNote) saveNote(); else { setNoteText(insp.notes); setEditingNote(true); } }} className="btn btn-secondary" style={{ padding:'3px 9px', fontSize:'0.68rem' }}>{editingNote ? 'Save' : 'Edit'}</button>
               </div>
               {editingNote
                 ? <textarea className="form-control" style={{ width:'100%', minHeight:'70px', fontSize:'0.85rem', boxSizing:'border-box' }} value={noteText} onChange={e => setNoteText(e.target.value)}/>
-                : <div style={{ backgroundColor:'rgba(0,0,0,0.15)', padding:'0.75rem', borderRadius:'8px', fontSize:'0.85rem', color:'var(--text-secondary)', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{insp.notes || 'No notes.'}</div>
+                : <div style={{ backgroundColor:'rgba(0,0,0,0.04)', padding:'0.75rem', borderRadius:'8px', fontSize:'0.85rem', color:'var(--text-secondary)', whiteSpace:'pre-wrap', lineHeight:1.5 }}>{insp.notes || 'No notes.'}</div>
               }
             </div>
             <div style={{ display:'flex', gap:'0.5rem' }}>
@@ -502,12 +502,12 @@ export const Dashboard: React.FC<Props> = ({
             </div>
             {sel.type === 'study' && (
               <div>
-                <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.85rem', fontWeight:600, color:'#fff', marginBottom:'0.6rem' }}><CheckSquare size={14}/> Checklist</div>
+                <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.85rem', fontWeight:600, color:'var(--text-primary)', marginBottom:'0.6rem' }}><CheckSquare size={14}/> Checklist</div>
                 <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
                   {insp.subtasks.map((st: any) => (
                     <div key={st.id} onClick={() => toggleSub(st.id)} style={{ display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'0.85rem', cursor:'pointer', padding:'3px' }}>
                       {st.completed ? <CheckSquare size={16} color="#34d399"/> : <Square size={16} color="var(--text-muted)"/>}
-                      <span style={{ textDecoration:st.completed?'line-through':'none', color:st.completed?'var(--text-muted)':'#fff' }}>{st.text}</span>
+                      <span style={{ textDecoration:st.completed?'line-through':'none', color:st.completed?'var(--text-muted)':'var(--text-primary)' }}>{st.text}</span>
                     </div>
                   ))}
                   <form onSubmit={addSub} style={{ display:'flex', gap:'6px', marginTop:'4px' }}>
@@ -540,7 +540,7 @@ export const Dashboard: React.FC<Props> = ({
                     <div className="timeline-content">
                       <div className="timeline-card" style={{ borderLeft:`3px solid ${item.color}`, padding:'0.6rem 0.9rem' }}>
                         <div style={{ flex:1, cursor:'pointer' }} onClick={() => setSel({ type:item.type, id:item.id, dbId:item.dbId, title:item.title, category:isStudy?'study block':'fixed event', start:item.start, end:item.end, completed:item.completed })}>
-                          <div style={{ fontWeight:600, color:'#fff', fontSize:'0.88rem' }}>{catEmoji(item.category)} {item.title}</div>
+                          <div style={{ fontWeight:600, color:'var(--text-primary)', fontSize:'0.88rem' }}>{catEmoji(item.category)} {item.title}</div>
                           <div style={{ fontSize:'0.7rem', color:'var(--text-secondary)', marginTop:'2px' }}>{dur.toFixed(1)}h • {item.category}</div>
                         </div>
                         {isStudy && (
@@ -565,9 +565,9 @@ export const Dashboard: React.FC<Props> = ({
             {activeTasks.length === 0
               ? <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', textAlign:'center', padding:'0.75rem' }}>No active tasks.</p>
               : activeTasks.slice(0,3).map(t => (
-                  <div key={t.id} style={{ padding:'0.85rem', backgroundColor:'rgba(255,255,255,0.015)', borderRadius:'10px', border:'1px solid var(--border-color)', borderLeft:`3px solid ${t.color}` }}>
+                  <div key={t.id} style={{ padding:'0.85rem', backgroundColor:'var(--bg-app)', borderRadius:'10px', border:'1px solid var(--border-color)', borderLeft:`3px solid ${t.color}` }}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'0.4rem' }}>
-                      <span style={{ fontWeight:600, fontSize:'0.85rem', color:'#fff' }}>{catEmoji(t.category)} {t.title}</span>
+                      <span style={{ fontWeight:600, fontSize:'0.85rem', color:'var(--text-primary)' }}>{catEmoji(t.category)} {t.title}</span>
                       <span>{prioEmoji(t.priority)}</span>
                     </div>
                     <div className="progress-container" style={{ height:'4px' }}><div className="progress-bar" style={{ width:`${(t.completedHours/t.estimatedHours)*100}%`, backgroundColor:t.color }}/></div>
@@ -599,7 +599,7 @@ export const Dashboard: React.FC<Props> = ({
               ? <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', textAlign:'center', padding:'0.75rem' }}>No upcoming deadlines.</p>
               : upcomingDeadlines.slice(0,5).map(t => (
                   <div key={t.id} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.82rem', padding:'0.5rem 0', borderBottom:'1px solid var(--border-color)' }}>
-                    <span style={{ color:'#fff' }}>{catEmoji(t.category)} {t.title}</span>
+                    <span style={{ color:'var(--text-primary)' }}>{catEmoji(t.category)} {t.title}</span>
                     <span style={{ color:t.color, fontWeight:700 }}>{fmtDate(t.deadline)}</span>
                   </div>
                 ))
@@ -618,9 +618,9 @@ export const Dashboard: React.FC<Props> = ({
             { label:'Rate',     value:`${weekRate}%` },
             { label:'Done',     value:`${weekTasksDone}` },
           ].map(s => (
-            <div key={s.label} style={{ padding:'0.65rem', backgroundColor:'rgba(255,255,255,0.02)', borderRadius:'8px', border:'1px solid var(--border-color)', textAlign:'center' }}>
+            <div key={s.label} style={{ padding:'0.65rem', backgroundColor:'var(--bg-app)', borderRadius:'8px', border:'1px solid var(--border-color)', textAlign:'center' }}>
               <div style={{ fontSize:'0.58rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'0.2rem' }}>{s.label}</div>
-              <div style={{ fontSize:'1.1rem', fontWeight:700, color:'#fff' }}>{s.value}</div>
+              <div style={{ fontSize:'1.1rem', fontWeight:700, color:'var(--text-primary)' }}>{s.value}</div>
             </div>
           ))}
         </div>
@@ -643,11 +643,11 @@ export const Dashboard: React.FC<Props> = ({
           ? <p style={{ textAlign:'center', padding:'1.25rem', color:'var(--text-muted)', fontSize:'0.82rem' }}>Nothing here yet.</p>
           : <div style={{ display:'flex', flexDirection:'column', gap:'0.45rem' }}>
               {todos.map(todo => (
-                <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.55rem 0.7rem', borderRadius:'8px', backgroundColor:todo.done?'rgba(255,255,255,0.01)':'rgba(255,255,255,0.025)', border:'1px solid var(--border-color)' }}>
+                <div key={todo.id} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.55rem 0.7rem', borderRadius:'8px', backgroundColor:todo.done?'transparent':'var(--bg-app)', border:'1px solid var(--border-color)' }}>
                   <button onClick={() => onToggleTodo(todo.id,!todo.done)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:todo.done?'#34d399':'var(--text-muted)', display:'flex', flexShrink:0 }}>
                     {todo.done ? <CheckCircle2 size={17}/> : <Square size={17}/>}
                   </button>
-                  <span style={{ flex:1, fontSize:'0.88rem', color:todo.done?'var(--text-muted)':'#fff', textDecoration:todo.done?'line-through':'none' }}>{todo.text}</span>
+                  <span style={{ flex:1, fontSize:'0.88rem', color:todo.done?'var(--text-muted)':'var(--text-primary)', textDecoration:todo.done?'line-through':'none' }}>{todo.text}</span>
                   <button onClick={() => onDeleteTodo(todo.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:'var(--text-muted)', display:'flex', opacity:0.5 }}>
                     <Trash2 size={13}/>
                   </button>
@@ -667,7 +667,7 @@ export const Dashboard: React.FC<Props> = ({
               { label:'Manage',    onClick: onOpenManager },
             ].map((item,i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                <span style={{ backgroundColor:'rgba(25,35,48,0.95)', color:'#fff', padding:'4px 10px', borderRadius:'6px', fontSize:'0.78rem', fontWeight:500, backdropFilter:'blur(8px)', border:'1px solid var(--border-color)' }}>{item.label}</span>
+                <span style={{ backgroundColor:'#111111', color:'#fff', padding:'4px 10px', borderRadius:'6px', fontSize:'0.78rem', fontWeight:500, border:'none' }}>{item.label}</span>
                 <button onClick={() => { item.onClick(); setFabOpen(false); }} className="btn btn-secondary" style={{ width:'40px', height:'40px', borderRadius:'50%', padding:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <Plus size={16}/>
                 </button>
