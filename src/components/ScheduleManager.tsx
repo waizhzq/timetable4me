@@ -58,11 +58,11 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [taskNotes, setTaskNotes] = useState('');
 
-  // Helper to format date as DD/MM/YYYY
+  // Helper to format date as DD/MM/YY
   const fmtDate = (d?: string) => {
     if (!d) return '';
     const [y, m, dd] = d.split('-');
-    return `${dd}/${m}/${y}`;
+    return `${dd}/${m}/${y.slice(-2)}`;
   };
 
   // Event Form State

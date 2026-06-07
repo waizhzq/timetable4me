@@ -63,9 +63,15 @@ export const generateSchedule = (
 
   tasks.forEach((task) => {
     if (task.startTime && task.endTime) {
-      const taskDate = task.hasDeadline && task.deadline ? task.deadline : startDate.toISOString().split('T')[0];
-      const startISO = new Date(taskDate + 'T' + task.startTime + ':00');
-      const endISO = new Date(taskDate + 'T' + task.endTime + ':00');
+      const taskDateStr = task.hasDeadline && task.deadline ? task.deadline : startDate.toISOString().split('T')[0];
+      
+      // Parse YYYY-MM-DD locally to avoid timezone shifts
+      const [y, m, d] = taskDateStr.split('-').map(Number);
+      const [sh, sm] = task.startTime.split(':').map(Number);
+      const [eh, em] = task.endTime.split(':').map(Number);
+
+      const startISO = new Date(y, m - 1, d, sh, sm);
+      const endISO = new Date(y, m - 1, d, eh, em);
 
       if (endISO < startISO) {
         endISO.setDate(endISO.getDate() + 1);
