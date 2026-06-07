@@ -209,8 +209,8 @@ export const Dashboard: React.FC<Props> = ({
   const todayTimeline = [
     ...events.filter(e => e.recurring ? e.day === todayName : e.date === todayStr).map(e => ({
       id: e.id, dbId: e.id, title: e.title, type: 'fixed' as const, color: e.color,
-      category: e.type, start: new Date(`${todayStr}T${e.startTime}`).toISOString(),
-      end: new Date(`${todayStr}T${e.endTime}`).toISOString(), completed: false,
+      category: e.type, start: `${todayStr}T${e.startTime}:00`,
+      end: `${todayStr}T${e.endTime}:00`, completed: false,
     })),
     ...sessions.filter(s => {
       // Compare only date part
@@ -221,17 +221,24 @@ export const Dashboard: React.FC<Props> = ({
         color: t?.color || '#EA5455', category: t?.category || 'task',
         start: s.start, end: s.end, completed: s.completed };
     }),
-  ].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+  ].sort((a, b) => a.start.localeCompare(b.start));
+
+  const toMins = (iso: string) => {
+    const timePart = iso.split('T')[1];
+    if (!timePart) return 0;
+    const [h, m] = timePart.split(':').map(Number);
+    return h * 60 + m;
+  };
 
   // Stacking logic for timeline
   const timelineWithLanes = todayTimeline.reduce((acc: any[], item) => {
-    const s = new Date(item.start).getTime();
+    const s = toMins(item.start);
+    const ie = toMins(item.end);
     let lane = 0;
     while (acc.some(other => {
       if (other.lane !== lane) return false;
-      const os = new Date(other.start).getTime();
-      const oe = new Date(other.end).getTime();
-      const ie = new Date(item.end).getTime();
+      const os = toMins(other.start);
+      const oe = toMins(other.end);
       return (s < oe && os < ie);
     })) {
       lane++;
@@ -242,8 +249,12 @@ export const Dashboard: React.FC<Props> = ({
   const maxLane = Math.max(-1, ...timelineWithLanes.map(i => i.lane));
 
   const todaySessions = todayTimeline.filter(i => i.type === 'study');
-  const nextItem  = todayTimeline.find(i => new Date(i.start) > now && !i.completed);
-  const nextMins  = nextItem ? Math.ceil((new Date(nextItem.start).getTime() - now.getTime()) / 60000) : null;
+  const nextItem  = todayTimeline.find(i => {
+    const itemMins = toMins(i.start);
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    return itemMins > nowMins && !i.completed;
+  });
+  const nextMins = nextItem ? toMins(nextItem.start) - (now.getHours() * 60 + now.getMinutes()) : null;
   const nextLabel = nextItem
     ? (nextMins! <= 0 ? 'Now' : nextMins! < 60 ? `${nextMins}m` : `${Math.round(nextMins!/60)}h`)
     : todaySessions.length > 0 ? 'Done' : '—';
@@ -269,7 +280,6 @@ export const Dashboard: React.FC<Props> = ({
 
   // Mini schedule helpers
   const DAY_MINS = (DAY_END - DAY_START) * 60;
-  const toMins   = (iso: string) => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
   const pct      = (m: number) => Math.min(100, Math.max(0, ((m - DAY_START*60) / DAY_MINS) * 100));
   const nowPct   = pct(now.getHours() * 60 + now.getMinutes());
 
