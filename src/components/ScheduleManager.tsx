@@ -58,6 +58,11 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [taskNotes, setTaskNotes] = useState('');
 
+  const getLocalToday = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   // Helper to format date as DD/MM/YY
   const fmtDate = (d?: string) => {
     if (!d) return '';
@@ -72,6 +77,8 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
   const [eventDay, setEventDay] = useState<'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday'>('Monday');
   const [eventStart, setEventStart] = useState('09:00');
   const [eventEnd, setEventEnd] = useState('11:00');
+  const [eventRecurring, setEventRecurring] = useState(true);
+  const [eventDate, setEventDate] = useState(getLocalToday());
 
   // Preferences State
   const [earliest, setEarliest] = useState(preferences.earliestStudyTime);
@@ -115,6 +122,8 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
           setEventDay(event.day || 'Monday');
           setEventStart(event.startTime);
           setEventEnd(event.endTime);
+          setEventRecurring(event.recurring);
+          setEventDate(event.date || getLocalToday());
         }
       }
     }
@@ -127,7 +136,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     setCustomCategory('');
     setTaskColor('#FF0052');
     setHasDeadline(true);
-    setTaskDeadline('');
+    setTaskDeadline(getLocalToday());
     setTaskPriority('medium');
   };
 
@@ -138,6 +147,8 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     setEventDay('Monday');
     setEventStart('09:00');
     setEventEnd('11:00');
+    setEventRecurring(true);
+    setEventDate(getLocalToday());
   };
 
   const handleAddTaskSubmit = async (e: React.FormEvent) => {
@@ -184,15 +195,16 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
       title: eventTitle,
       type: eventType,
       color: eventColor,
-      day: eventDay,
+      day: eventRecurring ? eventDay : undefined,
+      date: eventRecurring ? undefined : eventDate,
       startTime: eventStart,
       endTime: eventEnd,
-      recurring: true,
+      recurring: eventRecurring,
     };
 
     if (editingId) {
       await onUpdateEvent(editingId, eventData);
-      alert('Class updated!');
+      alert('Item updated!');
     } else {
       await onAddEvent(eventData);
     }
@@ -410,12 +422,27 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Day</label>
+                    <label className="form-label">Frequency</label>
+                    <div style={{ display: 'flex', gap: '8px', height: '38px', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}><input type="radio" checked={eventRecurring} onChange={() => setEventRecurring(true)} /> Weekly</label>
+                      <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}><input type="radio" checked={!eventRecurring} onChange={() => setEventRecurring(false)} /> One-off</label>
+                    </div>
+                  </div>
+                </div>
+
+                {eventRecurring ? (
+                  <div className="form-group">
+                    <label className="form-label">Day of the Week</label>
                     <select className="form-control" value={eventDay} onChange={(e: any) => setEventDay(e.target.value)}>
                       {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
-                </div>
+                ) : (
+                  <div className="form-group">
+                    <label className="form-label">Date</label>
+                    <input type="date" className="form-control" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required />
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">Theme Color</label>

@@ -35,6 +35,13 @@ function App() {
   };
   const todayStr = getLocalToday();
 
+  const parseLocalISO = (iso: string) => {
+    const [datePart, timePart] = iso.split('T');
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [hh, mm, ss] = (timePart || '00:00:00').split(':').map(Number);
+    return new Date(y, m - 1, d, hh, mm, ss || 0);
+  };
+
   useEffect(() => {
     const unsub = dbService.onAuthStateChanged((profile) => {
       setUser(profile);
@@ -54,12 +61,14 @@ function App() {
       const notifs: InAppNotification[] = [];
       sessions.forEach(s => {
         if (s.completed) return;
-        const diff = (new Date(s.start).getTime() - now.getTime()) / 60000;
+        const diff = (parseLocalISO(s.start).getTime() - now.getTime()) / 60000;
         if (diff > 0 && diff <= 15) notifs.push({ id: `s-${s.id}`, title: 'Upcoming Session', message: `"${s.taskTitle}" starts in ${Math.ceil(diff)} min`, time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), read: false });
       });
       tasks.forEach(t => {
-        if (t.status === 'completed') return;
-        const diff = (new Date(t.deadline + 'T23:59:59').getTime() - now.getTime()) / 3600000;
+        if (t.status === 'completed' || !t.deadline) return;
+        const [y, m, d] = t.deadline.split('-').map(Number);
+        const deadlineDate = new Date(y, m - 1, d, 23, 59, 59);
+        const diff = (deadlineDate.getTime() - now.getTime()) / 3600000;
         if (diff > 0 && diff <= 24) notifs.push({ id: `d-${t.id}`, title: 'Deadline Warning', message: `"${t.title}" due in ${Math.ceil(diff)}h`, time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), read: false });
       });
       if (notifs.length) setNotifications(prev => [...notifs, ...prev.filter(p => !notifs.some(n => n.id === p.id))]);

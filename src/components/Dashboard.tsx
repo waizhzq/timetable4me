@@ -59,6 +59,13 @@ export const Dashboard: React.FC<Props> = ({
   const todayStr  = getLocalToday();
   const todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
 
+  const parseLocalISO = (iso: string) => {
+    const [datePart, timePart] = iso.split('T');
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [hh, mm, ss] = (timePart || '00:00:00').split(':').map(Number);
+    return new Date(y, m - 1, d, hh, mm, ss || 0);
+  };
+
   // ── Inspector ────────────────────────────────────────────────────────────
   const [sel, setSel] = useState<{type:'study'|'fixed';id:string;dbId:string;title:string;category:string;start:string;end:string;completed:boolean}|null>(null);
   const [subText,     setSubText]     = useState('');
@@ -267,14 +274,15 @@ export const Dashboard: React.FC<Props> = ({
     .sort((a, b) => b.score - a.score);
 
   const upcomingDeadlines = [...activeTasks].filter(t => t.hasDeadline)
-    .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime());
+    .sort((a, b) => {
+       if (a.deadline === b.deadline) return 0;
+       return a.deadline! < b.deadline! ? -1 : 1;
+    });
 
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay());
-  weekStart.setHours(0,0,0,0);
-  const weekSess     = sessions.filter(s => new Date(s.start) >= weekStart);
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+  const weekSess     = sessions.filter(s => parseLocalISO(s.start) >= weekStart);
   const weekDone     = weekSess.filter(s => s.completed);
-  const weekHrs      = weekDone.reduce((s, x) => s + (new Date(x.end).getTime() - new Date(x.start).getTime()) / 3600000, 0);
+  const weekHrs      = weekDone.reduce((s, x) => s + (parseLocalISO(x.end).getTime() - parseLocalISO(x.start).getTime()) / 3600000, 0);
   const weekRate     = weekSess.length > 0 ? Math.round((weekDone.length / weekSess.length) * 100) : 0;
   const weekTasksDone = tasks.filter(t => t.status === 'completed').length;
 
@@ -293,7 +301,7 @@ export const Dashboard: React.FC<Props> = ({
       const s = sessions.find(s => s.id === sel.id);
       const t = tasks.find(t => t.id === sel.dbId);
       if (s && t) {
-        const a = new Date(s.start), b = new Date(s.end);
+        const a = parseLocalISO(s.start), b = parseLocalISO(s.end);
         const ot: Intl.DateTimeFormatOptions = { hour:'2-digit', minute:'2-digit', hour12:false };
         insp = { title: t.title, category: t.category, timeRange: `${a.toLocaleDateString([],{month:'short',day:'numeric'})} • ${a.toLocaleTimeString([],ot)}–${b.toLocaleTimeString([],ot)}`, notes: t.notes || '', subtasks: t.subtasks || [], color: t.color, priority: t.priority };
       }

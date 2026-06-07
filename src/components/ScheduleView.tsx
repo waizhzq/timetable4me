@@ -16,12 +16,20 @@ interface ScheduleViewProps {
 const SHORT_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const FULL_DAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
+const parseLocalISO = (iso: string) => {
+  const [datePart, timePart] = iso.split('T');
+  const [y, m, d] = datePart.split('-').map(Number);
+  const [hh, mm, ss] = (timePart || '00:00:00').split(':').map(Number);
+  return new Date(y, m - 1, d, hh, mm, ss || 0);
+};
+
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  const d = parseLocalISO(iso);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 function durationLabel(start: string, end: string) {
-  const mins = (new Date(end).getTime() - new Date(start).getTime()) / 60000;
+  const mins = (parseLocalISO(end).getTime() - parseLocalISO(start).getTime()) / 60000;
   if (mins < 60) return `${mins}m`;
   const h = Math.floor(mins / 60), m = mins % 60;
   return m ? `${h}h ${m}m` : `${h}h`;
@@ -41,8 +49,11 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     d.setDate(today.getDate() - todayIdx + i);
     return d;
   });
+  const getLocalStr = (date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
   const selDate     = weekDates[selDay];
-  const selDateStr  = selDate.toISOString().split('T')[0];
+  const selDateStr  = getLocalStr(selDate);
   const selDayName  = FULL_DAYS[selDay];
 
   // Merge events + sessions for selected day, sorted by start time
@@ -76,7 +87,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           color:    task?.color || '#EA5455',
           timeFrom: fmtTime(s.start),
           timeTo:   fmtTime(s.end),
-          sortKey:  new Date(s.start).toTimeString().slice(0, 5),
+          sortKey:  s.start.split('T')[1].slice(0, 5),
           category: task?.category || 'study',
           recurring: false,
           done:     s.completed,

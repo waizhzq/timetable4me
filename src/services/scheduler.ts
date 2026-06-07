@@ -17,7 +17,8 @@ export const calculatePriorityScore = (task: Task, now: Date = new Date()): numb
   // 1. Urgency Score
   let urgencyScore = 5; 
   if (task.hasDeadline && task.deadline) {
-    const deadlineDate = new Date(task.deadline + 'T23:59:59');
+    const [y, m, d] = task.deadline.split('-').map(Number);
+    const deadlineDate = new Date(y, m - 1, d, 23, 59, 59);
     const diffTime = deadlineDate.getTime() - now.getTime();
     const diffHours = diffTime / (1000 * 60 * 60);
 
@@ -63,7 +64,10 @@ export const generateSchedule = (
 
   tasks.forEach((task) => {
     if (task.startTime && task.endTime) {
-      const taskDateStr = task.hasDeadline && task.deadline ? task.deadline : startDate.toISOString().split('T')[0];
+      const getLocalToday = (date: Date) => {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      };
+      const taskDateStr = task.hasDeadline && task.deadline ? task.deadline : getLocalToday(startDate);
       
       // Parse YYYY-MM-DD locally to avoid timezone shifts
       const [y, m, d] = taskDateStr.split('-').map(Number);
