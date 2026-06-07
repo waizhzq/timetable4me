@@ -52,12 +52,19 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
   const [taskColor, setTaskColor] = useState('#FF0052');
   const [hasDeadline, setHasDeadline] = useState(true);
   const [taskDeadline, setTaskDeadline] = useState('');
-  const [timeMode, setTimeOption] = useState<'hours' | 'specific'>('hours');
+  const [timeMode, setTimeOption] = useState<'range' | 'deadline'>('range');
   const [taskHours, setTaskHours] = useState<number>(2);
   const [taskStart, setTaskStart] = useState('09:00');
   const [taskEnd, setTaskEnd] = useState('11:00');
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [taskNotes, setTaskNotes] = useState('');
+
+  // Helper to format date as DD/MM/YYYY
+  const fmtDate = (d?: string) => {
+    if (!d) return '';
+    const [y, m, dd] = d.split('-');
+    return `${dd}/${m}/${y}`;
+  };
 
   // Event Form State
   const [eventTitle, setEventTitle] = useState('');
@@ -140,11 +147,15 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     e.preventDefault();
     if (!taskTitle.trim()) return;
 
-    let estHours = taskHours;
-    if (timeMode === 'specific') {
+    let estHours = 0.5;
+    let finalStart = taskStart;
+    let finalEnd = taskStart;
+
+    if (timeMode === 'range') {
       const [sh, sm] = taskStart.split(':').map(Number);
       const [eh, em] = taskEnd.split(':').map(Number);
       estHours = (eh + em / 60) - (sh + sm / 60);
+      finalEnd = taskEnd;
     }
 
     const taskData = {
@@ -154,9 +165,9 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
       color: taskColor,
       hasDeadline,
       deadline: hasDeadline ? taskDeadline : undefined,
-      startTime: timeMode === 'specific' ? taskStart : undefined,
-      endTime: timeMode === 'specific' ? taskEnd : undefined,
-      estimatedHours: estHours,
+      startTime: finalStart,
+      endTime: finalEnd,
+      estimatedHours: Math.max(0.1, estHours),
       completedHours: 0,
       priority: taskPriority,
       status: 'pending' as const,
@@ -233,7 +244,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     setTaskColor(t.color);
     setHasDeadline(t.hasDeadline);
     setTaskDeadline(t.deadline || '');
-    setTimeOption(t.startTime ? 'specific' : 'hours');
+    setTimeOption(t.startTime && t.endTime && t.startTime !== t.endTime ? 'range' : 'deadline');
     setTaskHours(t.estimatedHours);
     setTaskStart(t.startTime || '09:00');
     setTaskEnd(t.endTime || '11:00');
@@ -342,18 +353,18 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Timing Option</label>
+                  <label className="form-label">Specific Time</label>
                   <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                    <button type="button" onClick={() => setTimeOption('hours')} className={`btn ${timeMode === 'hours' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '0.8rem' }}><Timer size={14} /> Total Hours</button>
-                    <button type="button" onClick={() => setTimeOption('specific')} className={`btn ${timeMode === 'specific' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '0.8rem' }}><Clock size={14} /> Specific Time</button>
+                    <button type="button" onClick={() => setTimeOption('range')} className={`btn ${timeMode === 'range' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '0.8rem' }}><Clock size={14} /> Between Hours</button>
+                    <button type="button" onClick={() => setTimeOption('deadline')} className={`btn ${timeMode === 'deadline' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '0.8rem' }}><Timer size={14} /> Specific Deadline</button>
                   </div>
-                  {timeMode === 'hours' ? (
-                    <input type="number" min="0.5" step="0.5" className="form-control" value={taskHours} onChange={(e) => setTaskHours(parseFloat(e.target.value) || 1)} placeholder="How many hours total?" required />
-                  ) : (
+                  {timeMode === 'range' ? (
                     <div className="form-row">
                       <input type="time" className="form-control" value={taskStart} onChange={(e) => setTaskStart(e.target.value)} required />
                       <input type="time" className="form-control" value={taskEnd} onChange={(e) => setTaskEnd(e.target.value)} required />
                     </div>
+                  ) : (
+                    <input type="time" className="form-control" value={taskStart} onChange={(e) => setTaskStart(e.target.value)} required />
                   )}
                 </div>
 
@@ -371,8 +382,8 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                         <span>{getPriorityIcon(t.priority)}</span>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        {t.hasDeadline ? `Due: ${t.deadline}` : 'No deadline'} • {t.estimatedHours}h
-                        {t.startTime && ` • ${t.startTime}-${t.endTime}`}
+                        {t.hasDeadline ? `Due: ${fmtDate(t.deadline)}` : 'No deadline'} • {t.estimatedHours}h
+                        {t.startTime && ` • ${t.startTime}${t.endTime && t.endTime !== t.startTime ? '-' + t.endTime : ''}`}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>

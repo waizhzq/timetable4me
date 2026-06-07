@@ -269,7 +269,7 @@ export const Dashboard: React.FC<Props> = ({
     }
   }
 
-  function fmtDate(d?: string) { if(!d) return '?'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y.slice(-2)}`; }
+  function fmtDate(d?: string) { if(!d) return '?'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
   function prioEmoji(p: string) { return p==='high'?'🔥':p==='medium'?'💓':'🛌'; }
   function catEmoji(c: string) { switch(c){case 'assignment':return'📝';case 'quiz':return'❓';case 'program':return'💻';case 'date':return'📅';case 'training':return'💪';default:return'•';} }
   function fmtRange(a:string,b:string){const f=(d:Date)=>d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});return`${f(new Date(a))} – ${f(new Date(b))}`;}
