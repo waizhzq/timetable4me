@@ -28,8 +28,8 @@ export interface Task {
   deadline?: string;
   startTime?: string;
   endTime?: string;
-  estimatedHours: number;
-  completedHours: number;
+  estimatedHours?: number;
+  completedHours?: number;
   priority: 'low' | 'medium' | 'high';
   status: 'pending' | 'in_progress' | 'completed';
   notes?: string;
@@ -184,11 +184,17 @@ export const dbService = {
     const tasks = await this.getTasks(uid);
     const task = tasks.find(t => t.id === taskId);
     if (task) {
-      const newHours = Math.max(0, Math.min(task.estimatedHours, task.completedHours + (completed ? hours : -hours)));
-      await this.updateTask(uid, taskId, {
-        completedHours: newHours,
-        status: newHours >= task.estimatedHours ? 'completed' : newHours > 0 ? 'in_progress' : 'pending',
-      });
+      if (task.estimatedHours !== undefined && task.completedHours !== undefined) {
+        const newHours = Math.max(0, Math.min(task.estimatedHours, task.completedHours + (completed ? hours : -hours)));
+        await this.updateTask(uid, taskId, {
+          completedHours: newHours,
+          status: newHours >= task.estimatedHours ? 'completed' : newHours > 0 ? 'in_progress' : 'pending',
+        });
+      } else {
+        await this.updateTask(uid, taskId, {
+          status: completed ? 'completed' : 'pending',
+        });
+      }
     }
   },
 

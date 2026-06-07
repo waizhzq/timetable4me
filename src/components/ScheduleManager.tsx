@@ -144,14 +144,10 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     e.preventDefault();
     if (!taskTitle.trim()) return;
 
-    let estHours = 0.5;
     let finalStart = taskStart;
     let finalEnd = taskStart;
 
     if (timeMode === 'range') {
-      const [sh, sm] = taskStart.split(':').map(Number);
-      const [eh, em] = taskEnd.split(':').map(Number);
-      estHours = (eh + em / 60) - (sh + sm / 60);
       finalEnd = taskEnd;
     }
 
@@ -164,8 +160,6 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
       deadline: hasDeadline ? taskDeadline : undefined,
       startTime: finalStart,
       endTime: finalEnd,
-      estimatedHours: Math.max(0.1, estHours),
-      completedHours: 0,
       priority: taskPriority,
       status: 'pending' as const,
       notes: taskNotes.trim() || undefined,
@@ -378,7 +372,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
                         <span>{getPriorityIcon(t.priority)}</span>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        {t.hasDeadline ? `Due: ${fmtDate(t.deadline)}` : 'No deadline'} • {t.estimatedHours}h
+                        {t.hasDeadline ? `Due: ${fmtDate(t.deadline)}` : 'No deadline'}
                         {t.startTime && ` • ${t.startTime}${t.endTime && t.endTime !== t.startTime ? '-' + t.endTime : ''}`}
                       </div>
                     </div>
