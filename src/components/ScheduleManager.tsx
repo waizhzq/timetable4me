@@ -53,7 +53,6 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
   const [hasDeadline, setHasDeadline] = useState(true);
   const [taskDeadline, setTaskDeadline] = useState('');
   const [timeMode, setTimeOption] = useState<'range' | 'deadline'>('range');
-  const [taskHours, setTaskHours] = useState<number>(2);
   const [taskStart, setTaskStart] = useState('09:00');
   const [taskEnd, setTaskEnd] = useState('11:00');
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
@@ -99,8 +98,7 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
           setTaskColor(task.color);
           setHasDeadline(task.hasDeadline);
           setTaskDeadline(task.deadline || '');
-          setTimeOption(task.startTime ? 'specific' : 'hours');
-          setTaskHours(task.estimatedHours);
+          setTimeOption(task.startTime && task.endTime && task.startTime !== task.endTime ? 'range' : 'deadline');
           setTaskStart(task.startTime || '09:00');
           setTaskEnd(task.endTime || '11:00');
           setTaskPriority(task.priority);
@@ -130,7 +128,6 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     setTaskColor('#FF0052');
     setHasDeadline(true);
     setTaskDeadline('');
-    setTaskHours(2);
     setTaskPriority('medium');
   };
 
@@ -245,7 +242,6 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
     setHasDeadline(t.hasDeadline);
     setTaskDeadline(t.deadline || '');
     setTimeOption(t.startTime && t.endTime && t.startTime !== t.endTime ? 'range' : 'deadline');
-    setTaskHours(t.estimatedHours);
     setTaskStart(t.startTime || '09:00');
     setTaskEnd(t.endTime || '11:00');
     setTaskPriority(t.priority);
