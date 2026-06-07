@@ -276,15 +276,15 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '1.25rem', backgroundColor: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-          <button onClick={() => { setActiveTab('tasks'); setEditingId(null); }} className="btn" style={{ flex: 1, backgroundColor: activeTab === 'tasks' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.85rem', padding: '10px' }}>
-            <ListTodo size={16} /><span>Tasks</span>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '1.25rem', backgroundColor: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
+          <button onClick={() => { setActiveTab('tasks'); setEditingId(null); }} className="btn" style={{ flex: '1 1 80px', backgroundColor: activeTab === 'tasks' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.8rem', padding: '8px 4px' }}>
+            <ListTodo size={14} /><span>Tasks</span>
           </button>
-          <button onClick={() => { setActiveTab('events'); setEditingId(null); }} className="btn" style={{ flex: 1, backgroundColor: activeTab === 'events' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.85rem', padding: '10px' }}>
-            <Calendar size={16} /><span>Classes</span>
+          <button onClick={() => { setActiveTab('events'); setEditingId(null); }} className="btn" style={{ flex: '1 1 80px', backgroundColor: activeTab === 'events' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.8rem', padding: '8px 4px' }}>
+            <Calendar size={14} /><span>Classes</span>
           </button>
-          <button onClick={() => { setActiveTab('settings'); setEditingId(null); }} className="btn" style={{ flex: 1, backgroundColor: activeTab === 'settings' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.85rem', padding: '10px' }}>
-            <LayoutGrid size={16} /><span>Settings</span>
+          <button onClick={() => { setActiveTab('settings'); setEditingId(null); }} className="btn" style={{ flex: '1 1 80px', backgroundColor: activeTab === 'settings' ? 'var(--primary)' : 'transparent', color: '#fff', fontSize: '0.8rem', padding: '8px 4px' }}>
+            <LayoutGrid size={14} /><span>Settings</span>
           </button>
         </div>
 

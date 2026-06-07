@@ -256,22 +256,21 @@ a:hover {
   margin-top: -1rem;
 }
 
-/* ── Mobile — iPhone 16 (390px) and up ───────────────────────────────────── */
-@media (max-width: 640px) {
+/* ── Mobile Optimization — Comprehensive ────────────────────────────────── */
+@media (max-width: 768px) {
   .main-content {
-    padding: 0.875rem 0.875rem;
-    gap: 1rem;
+    padding: 0.75rem;
+    gap: 0.75rem;
     margin-left: 0 !important;
   }
 
   .header-bar {
-    padding-bottom: 0.875rem;
+    padding: 0.6rem 0.75rem;
+    margin: -0.75rem -0.75rem 0.5rem;
     position: sticky;
     top: 0;
     z-index: 200;
     background-color: var(--bg-app);
-    margin: -0.875rem -0.875rem 0;
-    padding: 0.75rem 0.875rem;
     border-bottom: 1px solid var(--border-color);
   }
 
@@ -279,47 +278,74 @@ a:hover {
     font-size: 1rem !important;
   }
 
+  .header-actions {
+    gap: 0.5rem;
+  }
+
   .header-schedule-btn .header-btn-label {
     display: none;
   }
 
   .header-schedule-btn {
-    padding: 7px !important;
+    padding: 8px !important;
     border-radius: 50% !important;
+    min-width: 36px;
   }
 
   .card {
-    padding: 0.875rem;
+    padding: 1rem;
     border-radius: var(--border-radius-md);
   }
 
-  /* Stack 2-col grids to 1 col */
   .dashboard-grid {
     grid-template-columns: 1fr !important;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
-  /* Notifications panel — full width on mobile */
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
   .notifications-panel {
     position: fixed !important;
-    top: 56px !important;
-    left: 0.875rem !important;
-    right: 0.875rem !important;
+    top: 60px !important;
+    left: 0.5rem !important;
+    right: 0.5rem !important;
     width: auto !important;
+    max-height: 80vh;
   }
 
-  /* Bigger touch targets */
   .btn {
-    min-height: 40px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
   }
 
   .timeline-time {
-    width: 62px !important;
-    font-size: 0.68rem !important;
+    width: 60px !important;
+    font-size: 0.65rem !important;
   }
 
-  h3 {
-    font-size: 0.95rem;
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 0.95rem; }
+
+  /* Compact mode for timetable blocks on mobile */
+  .timetable-block {
+    padding: 0.2rem 0.35rem;
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 0.5rem;
+  }
+  .header-bar {
+    margin: -0.5rem -0.5rem 0.5rem;
+  }
+  .card {
+    padding: 0.85rem;
   }
 }
 

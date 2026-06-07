@@ -411,7 +411,7 @@ export const Dashboard: React.FC<Props> = ({
         {/* THE TIME */}
         <div
           ref={timeTextRef}
-          style={{ fontFamily:"'DS-Digital', monospace", fontSize:'clamp(5.5rem, 22vw, 11rem)', fontWeight:400, letterSpacing:'0.02em', lineHeight:1, color:COLOR_IDLE, transition:'none', display:'flex', alignItems:'baseline' }}
+          style={{ fontFamily:"'DS-Digital', monospace", fontSize:'clamp(4.5rem, 20vw, 11rem)', fontWeight:400, letterSpacing:'0.02em', lineHeight:1, color:COLOR_IDLE, transition:'none', display:'flex', alignItems:'baseline' }}
         >
           <span>{pomM}:{pomS}</span>
           <span ref={msDisplayRef} style={{ fontSize:'0.45em', opacity:0.8, letterSpacing:0, marginLeft:'0.08em' }}>.00</span>
