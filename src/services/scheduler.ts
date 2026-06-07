@@ -77,12 +77,17 @@ export const generateSchedule = (
         endISO.setDate(endISO.getDate() + 1);
       }
 
+      const fmtLocal = (date: Date) => {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      };
+
       sessions.push({
         id: `session-fixed-task-${task.id}`,
         taskId: task.id,
         taskTitle: task.title,
-        start: startISO.toISOString(),
-        end: endISO.toISOString(),
+        start: fmtLocal(startISO),
+        end: fmtLocal(endISO),
         completed: task.status === 'completed',
       });
     }

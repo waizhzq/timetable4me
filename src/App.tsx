@@ -29,7 +29,11 @@ function App() {
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const getLocalToday = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const todayStr = getLocalToday();
 
   useEffect(() => {
     const unsub = dbService.onAuthStateChanged((profile) => {

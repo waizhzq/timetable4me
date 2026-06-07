@@ -52,7 +52,11 @@ export const Dashboard: React.FC<Props> = ({
   onOpenManager, onOpenSchedule,
 }) => {
   const now       = new Date();
-  const todayStr  = now.toISOString().split('T')[0];
+  const getLocalToday = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const todayStr  = getLocalToday();
   const todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
 
   // ── Inspector ────────────────────────────────────────────────────────────
@@ -208,13 +212,34 @@ export const Dashboard: React.FC<Props> = ({
       category: e.type, start: new Date(`${todayStr}T${e.startTime}`).toISOString(),
       end: new Date(`${todayStr}T${e.endTime}`).toISOString(), completed: false,
     })),
-    ...sessions.filter(s => s.start.startsWith(todayStr)).map(s => {
+    ...sessions.filter(s => {
+      // Compare only date part
+      return s.start.split('T')[0] === todayStr;
+    }).map(s => {
       const t = tasks.find(t => t.id === s.taskId);
       return { id: s.id, dbId: s.taskId, title: s.taskTitle, type: 'study' as const,
         color: t?.color || '#EA5455', category: t?.category || 'task',
         start: s.start, end: s.end, completed: s.completed };
     }),
   ].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+
+  // Stacking logic for timeline
+  const timelineWithLanes = todayTimeline.reduce((acc: any[], item) => {
+    const s = new Date(item.start).getTime();
+    let lane = 0;
+    while (acc.some(other => {
+      if (other.lane !== lane) return false;
+      const os = new Date(other.start).getTime();
+      const oe = new Date(other.end).getTime();
+      const ie = new Date(item.end).getTime();
+      return (s < oe && os < ie);
+    })) {
+      lane++;
+    }
+    acc.push({ ...item, lane });
+    return acc;
+  }, []);
+  const maxLane = Math.max(-1, ...timelineWithLanes.map(i => i.lane));
 
   const todaySessions = todayTimeline.filter(i => i.type === 'study');
   const nextItem  = todayTimeline.find(i => new Date(i.start) > now && !i.completed);
@@ -412,18 +437,28 @@ export const Dashboard: React.FC<Props> = ({
           </div>
           <button onClick={onOpenSchedule} className="btn btn-secondary" style={{ padding:'4px 12px', fontSize:'0.75rem' }}>Full view</button>
         </div>
-        <div style={{ position:'relative', height:'40px', backgroundColor:'rgba(176,228,204,0.05)', borderRadius:'4px', overflow:'hidden' }}>
+        <div style={{ position:'relative', height: `${Math.max(40, (maxLane + 1) * 20)}px`, backgroundColor:'rgba(176,228,204,0.05)', borderRadius:'4px', overflow:'hidden', transition: 'height 0.3s' }}>
           {[8,10,12,14,16,18,20,22].map(h => (
             <div key={h} style={{ position:'absolute', left:`${pct(h*60)}%`, top:0, bottom:0, width:'1px', backgroundColor:'rgba(176,228,204,0.1)' }}>
               <span style={{ position:'absolute', top:'2px', left:'2px', fontSize:'9px', color:'var(--text-muted)' }}>{h}</span>
             </div>
           ))}
-          {todayTimeline.map(item => {
+          {timelineWithLanes.map(item => {
             const s = pct(toMins(item.start)), e = pct(toMins(item.end));
             const w = Math.max(e - s, 1.5);
             return (
               <div key={item.id} title={item.title} onClick={() => setSel({ type:item.type, id:item.id, dbId:item.dbId, title:item.title, category:item.type==='fixed'?'fixed event':'study block', start:item.start, end:item.end, completed:item.completed })}
-                style={{ position:'absolute', left:`${s}%`, width:`${w}%`, top:'6px', bottom:'6px', backgroundColor: item.completed ? 'rgba(52,211,153,0.4)' : item.color+'cc', borderRadius:'4px', cursor:'pointer', minWidth:'6px' }}
+                style={{ 
+                  position:'absolute', 
+                  left:`${s}%`, 
+                  width:`${w}%`, 
+                  top: `${item.lane * (100 / (maxLane + 1)) + 5}%`, 
+                  height: `${(100 / (maxLane + 1)) - 10}%`,
+                  backgroundColor: item.completed ? 'rgba(52,211,153,0.4)' : item.color+'cc', 
+                  borderRadius:'4px', 
+                  cursor:'pointer', 
+                  minWidth:'6px' 
+                }}
               />
             );
           })}
