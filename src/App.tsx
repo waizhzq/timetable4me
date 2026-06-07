@@ -67,26 +67,24 @@ function App() {
 
   const loadUserData = async () => {
     if (!user) return;
-    const [prefs, fetchedTasks, fetchedEvents, fetchedSessions, fetchedTodos] = await Promise.all([
+    const [prefs, fetchedTasks, fetchedEvents, fetchedTodos] = await Promise.all([
       dbService.getPreferences(user.uid),
       dbService.getTasks(user.uid),
       dbService.getEvents(user.uid),
-      dbService.getSessions(user.uid),
       dbService.getTodos(user.uid, todayStr),
     ]);
     setPreferences(prefs);
     setTasks(fetchedTasks);
     setEvents(fetchedEvents);
     setTodos(fetchedTodos);
-    if (fetchedSessions.length === 0 && fetchedTasks.length > 0) {
-      const r = generateSchedule(fetchedTasks, fetchedEvents, prefs);
+    
+    // Always recalculate sessions on load to ensure any old automatic sessions are cleared
+    const r = generateSchedule(fetchedTasks, fetchedEvents, prefs);
+    if (user.uid) {
       await dbService.saveSessions(user.uid, r.sessions);
-      setSessions(r.sessions);
-      setConflictedTaskIds(r.conflictedTaskIds);
-    } else {
-      setSessions(fetchedSessions);
-      setConflictedTaskIds(generateSchedule(fetchedTasks, fetchedEvents, prefs).conflictedTaskIds);
     }
+    setSessions(r.sessions);
+    setConflictedTaskIds(r.conflictedTaskIds);
   };
 
   const recalc = async (t: Task[], e: FixedEvent[], p: UserPreferences, silent = false) => {
