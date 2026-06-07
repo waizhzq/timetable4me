@@ -324,30 +324,30 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
 
                 <div className="form-group">
                   <label className="form-label">Task Color</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '4px' }}>
                     {COLORS.map(c => (
-                      <div key={c} onClick={() => setTaskColor(c)} style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: c, border: taskColor === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }} />
+                      <div key={c} onClick={() => setTaskColor(c)} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: c, border: taskColor === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'transform 0.1s' }} />
                     ))}
                   </div>
                 </div>
 
-                <div className="form-row" style={{ alignItems: 'flex-end' }}>
-                  <div className="form-group" style={{ flex: 0.5 }}>
+                <div className="form-row">
+                  <div className="form-group">
                     <label className="form-label">Priority</label>
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       {(['low', 'medium', 'high'] as const).map(p => (
-                        <button key={p} type="button" onClick={() => setTaskPriority(p)} className="btn" style={{ flex: 1, padding: '8px', backgroundColor: taskPriority === p ? 'rgba(255,255,255,0.1)' : 'transparent', border: '1px solid var(--border-color)', fontSize: '1.1rem' }}>
+                        <button key={p} type="button" onClick={() => setTaskPriority(p)} className="btn" style={{ flex: 1, padding: '12px', backgroundColor: taskPriority === p ? 'rgba(255,255,255,0.1)' : 'transparent', border: '1px solid var(--border-color)', fontSize: '1.25rem' }}>
                           {getPriorityIcon(p)}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Deadline?</span>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}><input type="radio" checked={hasDeadline} onChange={() => setHasDeadline(true)} /> Yes</label>
-                        <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}><input type="radio" checked={!hasDeadline} onChange={() => setHasDeadline(false)} /> No</label>
+                      <div style={{ display: 'flex', gap: '12px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 10px', borderRadius: '6px' }}>
+                        <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}><input type="radio" checked={hasDeadline} onChange={() => setHasDeadline(true)} /> Yes</label>
+                        <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}><input type="radio" checked={!hasDeadline} onChange={() => setHasDeadline(false)} /> No</label>
                       </div>
                     </label>
                     <input type="date" className="form-control" value={taskDeadline} onChange={(e) => setTaskDeadline(e.target.value)} disabled={!hasDeadline} style={{ opacity: hasDeadline ? 1 : 0.5 }} required={hasDeadline} />
@@ -356,12 +356,12 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
 
                 <div className="form-group">
                   <label className="form-label">Specific Time</label>
-                  <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                    <button type="button" onClick={() => setTimeOption('range')} className={`btn ${timeMode === 'range' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '0.8rem' }}><Clock size={14} /> Between Hours</button>
-                    <button type="button" onClick={() => setTimeOption('deadline')} className={`btn ${timeMode === 'deadline' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '0.8rem' }}><Timer size={14} /> Specific Deadline</button>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                    <button type="button" onClick={() => setTimeOption('range')} className={`btn ${timeMode === 'range' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '0.75rem', padding: '10px 4px' }}><Clock size={14} /> Range</button>
+                    <button type="button" onClick={() => setTimeOption('deadline')} className={`btn ${timeMode === 'deadline' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '0.75rem', padding: '10px 4px' }}><Timer size={14} /> Deadline</button>
                   </div>
                   {timeMode === 'range' ? (
-                    <div className="form-row">
+                    <div className="form-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
                       <input type="time" className="form-control" value={taskStart} onChange={(e) => setTaskStart(e.target.value)} required />
                       <input type="time" className="form-control" value={taskEnd} onChange={(e) => setTaskEnd(e.target.value)} required />
                     </div>

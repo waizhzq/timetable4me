@@ -335,6 +335,28 @@ a:hover {
     padding: 0.2rem 0.35rem;
     font-size: 0.65rem;
   }
+
+  /* Schedule Manager Mobile Refinements */
+  .modal-content {
+    padding: 1.25rem 1rem !important;
+    max-height: 92vh !important;
+    border-radius: var(--border-radius-lg) !important;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .form-control {
+    padding: 0.85rem !important; /* Larger touch area */
+    font-size: 1rem !important; /* Avoid iOS auto-zoom on focus */
+  }
+
+  .btn {
+    padding: 0.8rem 1rem !important;
+    font-size: 0.9rem !important;
+  }
 }
 
 @media (max-width: 480px) {
