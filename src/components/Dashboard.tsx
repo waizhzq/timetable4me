@@ -51,6 +51,21 @@ export const Dashboard: React.FC<Props> = ({
   onAddTodo, onToggleTodo, onDeleteTodo, onClearDoneTodos,
   onOpenManager, onOpenSchedule,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      const sections = containerRef.current.querySelectorAll(':scope > div, :scope > .dashboard-grid > div');
+      animate(sections, {
+        opacity: [0, 1],
+        translateY: [20, 0],
+        delay: (el, i) => i * 60,
+        duration: 600,
+        easing: 'easeOutQuart'
+      });
+    }
+  }, []);
+
   const now       = new Date();
   const getLocalToday = () => {
     const d = new Date();
@@ -77,6 +92,20 @@ export const Dashboard: React.FC<Props> = ({
 
   // ── FAB ──────────────────────────────────────────────────────────────────
   const [fabOpen, setFabOpen] = useState(false);
+  const fabMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (fabOpen && fabMenuRef.current) {
+      animate(fabMenuRef.current.children, {
+        opacity: [0, 1],
+        translateX: [20, 0],
+        scale: [0.8, 1],
+        delay: (el, i) => i * 40,
+        duration: 300,
+        easing: 'easeOutBack'
+      });
+    }
+  }, [fabOpen]);
 
   // ── Pomodoro ─────────────────────────────────────────────────────────────
   const [timerType,  setTimerType]  = useState<'pomodoro'|'free'>('pomodoro');
@@ -311,7 +340,7 @@ export const Dashboard: React.FC<Props> = ({
   function fmtDate(d?: string) { if(!d) return '?'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y.slice(-2)}`; }
   function prioEmoji(p: string) { return p==='high'?'🔥':p==='medium'?'💓':'🛌'; }
   function catEmoji(c: string) { switch(c){case 'assignment':return'📝';case 'quiz':return'❓';case 'program':return'💻';case 'date':return'📅';case 'training':return'💪';default:return'•';} }
-  function fmtRange(a:string,b:string){const f=(d:Date)=>d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});return`${f(new Date(a))} – ${f(new Date(b))}`;}
+  function fmtRange(a:string,b:string){const f=(d:Date)=>d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});return`${f(parseLocalISO(a))} – ${f(parseLocalISO(b))}`;}
 
   const toggleSub = async (subId: string) => {
     if (!sel || sel.type !== 'study') return;
@@ -349,7 +378,7 @@ export const Dashboard: React.FC<Props> = ({
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem', maxWidth:'100%', overflowX:'hidden', paddingBottom:'100px' }}>
+    <div ref={containerRef} style={{ display:'flex', flexDirection:'column', gap:'1.25rem', maxWidth:'100%', overflowX:'hidden', paddingBottom:'100px' }}>
 
       {/* ══ TIMER HERO ══════════════════════════════════════════════════════ */}
       <div
@@ -368,6 +397,7 @@ export const Dashboard: React.FC<Props> = ({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
+          opacity: 0,
         }}
       >
         {/* Top row: type toggle + session count + reset */}
@@ -446,7 +476,7 @@ export const Dashboard: React.FC<Props> = ({
       </div>
 
       {/* ══ MINI SCHEDULE ═══════════════════════════════════════════════════ */}
-      <div className="card" style={{ padding:'1rem' }}>
+      <div className="card" style={{ padding:'1rem', opacity: 0 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', color:'var(--text-primary)', fontWeight:600, fontSize:'0.9rem' }}>
             <CalendarDays size={16} className="logo-icon"/>
@@ -490,7 +520,7 @@ export const Dashboard: React.FC<Props> = ({
       </div>
 
       {/* ══ DAILY PROGRESS ══════════════════════════════════════════════════ */}
-      <div className="card" style={{ padding:'0.9rem 1.1rem', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+      <div className="card" style={{ padding:'0.9rem 1.1rem', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', opacity: 0 }}>
         <div style={{ paddingLeft:'0.75rem' }}>
           <div style={{ fontSize:'0.65rem', color:'var(--text-muted)', marginBottom:'0.25rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Next</div>
           {nextItem
@@ -564,7 +594,7 @@ export const Dashboard: React.FC<Props> = ({
       )}
 
       {/* ══ TODAY'S SCHEDULE ════════════════════════════════════════════════ */}
-      <div className="card">
+      <div className="card" style={{ opacity: 0 }}>
         <div className="card-title" style={{ justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}><Clock className="logo-icon" size={18}/><h3>Today</h3></div>
           <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>{todayName}</span>
@@ -574,7 +604,7 @@ export const Dashboard: React.FC<Props> = ({
           : <div className="timeline">
               {todayTimeline.map(item => {
                 const isStudy = item.type === 'study';
-                const dur = (new Date(item.end).getTime() - new Date(item.start).getTime()) / 3600000;
+                const dur = (parseLocalISO(item.end).getTime() - parseLocalISO(item.start).getTime()) / 3600000;
                 return (
                   <div key={item.id} className="timeline-item" style={{ gap:'0.75rem' }}>
                     <div className="timeline-time" style={{ width:'72px', fontSize:'0.72rem' }}>{fmtRange(item.start,item.end)}</div>
@@ -601,7 +631,7 @@ export const Dashboard: React.FC<Props> = ({
 
       {/* ══ TASKS & DEADLINES ═══════════════════════════════════════════════ */}
       <div className="dashboard-grid">
-        <div className="card">
+        <div className="card" style={{ opacity: 0 }}>
           <div className="card-title"><Star size={18} className="logo-icon"/><h3>Priorities</h3></div>
           <div style={{ display:'flex', flexDirection:'column', gap:'0.85rem' }}>
             {activeTasks.length === 0
@@ -620,7 +650,7 @@ export const Dashboard: React.FC<Props> = ({
             }
           </div>
         </div>
-        <div className="card">
+        <div className="card" style={{ opacity: 0 }}>
           <div className="card-title"><Bookmark size={18} className="logo-icon"/><h3>Deadlines</h3></div>
           <div style={{ display:'flex', flexDirection:'column', gap:'0.6rem' }}>
             {overdue.length > 0 && <>
@@ -649,7 +679,7 @@ export const Dashboard: React.FC<Props> = ({
       </div>
 
       {/* ══ WEEKLY STATS ════════════════════════════════════════════════════ */}
-      <div className="card">
+      <div className="card" style={{ opacity: 0 }}>
         <div className="card-title"><BarChart2 size={18} className="logo-icon"/><h3>This Week</h3></div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'0.75rem' }}>
           {[
@@ -667,7 +697,7 @@ export const Dashboard: React.FC<Props> = ({
       </div>
 
       {/* ══ QUICK TO-DO ══════════════════════════════════════════════════════ */}
-      <div className="card">
+      <div className="card" style={{ opacity: 0 }}>
         <div className="card-title" style={{ justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}><ListTodo size={18} className="logo-icon"/><h3>To-Do</h3></div>
           <div style={{ display:'flex', alignItems:'center', gap:'0.6rem' }}>
@@ -700,20 +730,20 @@ export const Dashboard: React.FC<Props> = ({
       {/* ══ FAB ══════════════════════════════════════════════════════════════ */}
       <div style={{ position:'fixed', bottom:'calc(24px + env(safe-area-inset-bottom))', right:'20px', zIndex:500, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'10px' }}>
         {fabOpen && (
-          <>
+          <div ref={fabMenuRef} style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'10px' }}>
             {[
               { label:'Add Task',  onClick: onOpenManager },
               { label:'Add Class', onClick: onOpenManager },
               { label:'Manage',    onClick: onOpenManager },
             ].map((item,i) => (
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                <span style={{ backgroundColor:'#111111', color:'#fff', padding:'4px 10px', borderRadius:'4px', fontSize:'0.78rem', fontWeight:500, border:'none' }}>{item.label}</span>
-                <button onClick={() => { item.onClick(); setFabOpen(false); }} className="btn btn-secondary" style={{ width:'40px', height:'40px', borderRadius:'50%', padding:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:'0.5rem', opacity: 0 }}>
+                <span style={{ backgroundColor:'#111111', color:'#fff', padding:'4px 10px', borderRadius:'4px', fontSize:'0.78rem', fontWeight:500, border:'none', boxShadow:'0 2px 8px rgba(0,0,0,0.5)' }}>{item.label}</span>
+                <button onClick={() => { item.onClick(); setFabOpen(false); }} className="btn btn-secondary" style={{ width:'40px', height:'40px', borderRadius:'50%', padding:0, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 12px rgba(0,0,0,0.4)' }}>
                   <Plus size={16}/>
                 </button>
               </div>
             ))}
-          </>
+          </div>
         )}
         <button onClick={() => setFabOpen(o=>!o)} style={{ width:'52px', height:'52px', borderRadius:'50%', backgroundColor:'var(--primary)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px rgba(234,84,85,0.4)', transform: fabOpen?'rotate(45deg)':'rotate(0deg)', transition:'transform 0.2s' }}>
           {fabOpen ? <X size={22} color="#fff"/> : <Plus size={22} color="#fff"/>}

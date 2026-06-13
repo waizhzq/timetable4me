@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Task, FixedEvent, StudySession } from '../services/db';
 import { ArrowLeft, Download, Plus, CheckCircle2, Circle, Repeat2 } from 'lucide-react';
 import { exportWeekAsPdf } from '../utils/exportPdf';
+import { animate } from 'animejs';
 
 interface ScheduleViewProps {
   tasks: Task[];
@@ -42,6 +43,46 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const today     = new Date();
   const todayIdx  = today.getDay();
   const [selDay, setSelDay] = useState(todayIdx);
+  const viewRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (viewRef.current) {
+      animate(viewRef.current, {
+        translateX: ['100%', '0%'],
+        duration: 400,
+        easing: 'easeOutQuart'
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (listRef.current) {
+      const items = listRef.current.querySelectorAll('.timeline-item');
+      if (items.length > 0) {
+        animate(items, {
+          opacity: [0, 1],
+          translateX: [15, 0],
+          delay: (el, i) => i * 40,
+          duration: 400,
+          easing: 'easeOutQuart'
+        });
+      }
+    }
+  }, [selDay, sessions, events]);
+
+  const handleBack = () => {
+    if (viewRef.current) {
+      animate(viewRef.current, {
+        translateX: '100%',
+        duration: 350,
+        easing: 'easeInQuart',
+        complete: () => onBack()
+      });
+    } else {
+      onBack();
+    }
+  };
 
   // Week dates (Sun–Sat of this week)
   const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -111,11 +152,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const headerDate = selDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
   return (
-    <div style={{
+    <div ref={viewRef} style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       backgroundColor: 'var(--bg-app)',
       display: 'flex', flexDirection: 'column',
       color: 'var(--text-primary)',
+      transform: 'translateX(100%)',
     }}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -126,7 +168,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         backgroundColor: 'var(--bg-app)',
         flexShrink: 0,
       }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: '4px' }}>
+        <button onClick={handleBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: '4px' }}>
           <ArrowLeft size={22} />
         </button>
 
@@ -175,7 +217,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
       </div>
 
       {/* ── Timeline ───────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0' }}>
+      <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0' }}>
         {dayItems.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-muted)' }}>
             <p style={{ fontSize: '0.9rem' }}>Nothing on {selDayName}.</p>
@@ -194,10 +236,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                     <div style={{ height: '1px', margin: '0 1rem', backgroundColor: 'var(--border-color)', opacity: 0.5 }} />
                   )}
 
-                  <div style={{
+                  <div className="timeline-item" style={{
                     display: 'flex', alignItems: 'stretch', gap: '0',
                     padding: '0 1rem',
-                    opacity: isDone ? 0.5 : 1,
+                    opacity: 0,
                     transition: 'opacity 0.2s',
                   }}>
                     {/* Time column */}

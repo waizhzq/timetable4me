@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { dbService } from '../services/db';
 import type { UserProfile } from '../services/db';
 import { ShieldAlert } from 'lucide-react';
+import { animate } from 'animejs';
 
 interface AuthProps {
   onAuthSuccess: (user: UserProfile) => void;
@@ -10,6 +11,18 @@ interface AuthProps {
 export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (cardRef.current) {
+      animate(cardRef.current, {
+        opacity: [0, 1],
+        translateY: [20, 0],
+        duration: 800,
+        easing: 'easeOutQuart'
+      });
+    }
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -26,7 +39,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
 
   return (
     <div className="auth-container">
-      <div className="auth-card" style={{ maxWidth: '400px' }}>
+      <div className="auth-card" ref={cardRef} style={{ maxWidth: '400px', opacity: 0 }}>
         <div className="auth-header" style={{ marginBottom: '2rem' }}>
           <svg width="52" height="52" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '0.75rem' }}>
               <rect width="32" height="32" rx="8" fill="#0d1c1a"/>

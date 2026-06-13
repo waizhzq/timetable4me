@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Task, FixedEvent, UserPreferences } from '../services/db';
+import { animate } from 'animejs';
 import {
   Trash2,
   Calendar,
@@ -44,6 +45,43 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'tasks' | 'events' | 'settings'>('tasks');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (modalRef.current && overlayRef.current) {
+      animate(overlayRef.current, {
+        opacity: [0, 1],
+        duration: 300,
+        easing: 'linear'
+      });
+      animate(modalRef.current, {
+        opacity: [0, 1],
+        scale: [0.95, 1],
+        duration: 400,
+        easing: 'easeOutQuart'
+      });
+    }
+  }, []);
+
+  const handleClose = () => {
+    if (modalRef.current && overlayRef.current) {
+      animate(overlayRef.current, {
+        opacity: 0,
+        duration: 200,
+        easing: 'linear'
+      });
+      animate(modalRef.current, {
+        opacity: 0,
+        scale: 0.95,
+        duration: 200,
+        easing: 'easeInQuart',
+        complete: () => onClose()
+      });
+    } else {
+      onClose();
+    }
+  };
 
   // Task Form State
   const [taskTitle, setTaskTitle] = useState('');
@@ -267,11 +305,11 @@ export const ScheduleManager: React.FC<ScheduleManagerProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)' }}>
+    <div className="modal-overlay" ref={overlayRef} onClick={handleClose} style={{ opacity: 0 }}>
+      <div className="modal-content" ref={modalRef} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', opacity: 0, transform: 'scale(0.95)' }}>
         <div className="modal-header">
           <h2 className="modal-title">{editingId ? 'Edit Item' : 'Schedule Manager'}</h2>
-          <button onClick={onClose} className="btn btn-secondary" style={{ padding: '6px' }}>
+          <button onClick={handleClose} className="btn btn-secondary" style={{ padding: '6px' }}>
             <X size={20} />
           </button>
         </div>
